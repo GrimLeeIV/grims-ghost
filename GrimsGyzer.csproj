@@ -1,0 +1,43 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>GrimsGyzer</AssemblyName>
+    <RootNamespace>GrimsGyzer</RootNamespace>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon Condition="Exists('app.ico')">app.ico</ApplicationIcon>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <DebugType>none</DebugType>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <Product>Grim's Gyzer</Product>
+    <AssemblyTitle>Grim's Gyzer</AssemblyTitle>
+    <Version>1.4.0</Version>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="src\**\*.cs" />
+    <EmbeddedResource Include="src\editor.html" LogicalName="GrimsGyzer.editor.html" />
+  </ItemGroup>
+
+  <!-- Optional runtime dependency: ffmpeg (video + instant replay). Copied next to the exe for local runs if present in deps\. -->
+  <ItemGroup>
+    <None Include="deps\ffmpeg.exe" Link="ffmpeg.exe" CopyToOutputDirectory="PreserveNewest" Condition="Exists('deps\ffmpeg.exe')" />
+    <None Include="deps\ffmpeg-LICENSE.txt" Link="ffmpeg-LICENSE.txt" CopyToOutputDirectory="PreserveNewest" Condition="Exists('deps\ffmpeg-LICENSE.txt')" />
+  </ItemGroup>
+
+  <!-- The installer lives in setup\ and is built separately -->
+  <ItemGroup>
+    <Compile Remove="setup\**" />
+    <None Remove="setup\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+  </ItemGroup>
+
+</Project>

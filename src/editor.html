@@ -1,0 +1,708 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>{{NAME}} · Grim's Gyzer</title>
+<style>
+:root{--bg:#0e0f12;--panel:#1a1c22f2;--line:#2c2f38;--fg:#e8e9ee;--dim:#8b8f9c;--accent:#ff4040}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:13px system-ui,"Segoe UI",sans-serif;overflow:hidden;user-select:none}
+#view{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;box-shadow:0 8px 30px #0009;backdrop-filter:blur(8px)}
+
+#tools{position:fixed;left:16px;top:84px;padding:16px 6px 6px;z-index:2;--b:36px;--cols:1}
+#grip{position:absolute;left:0;right:0;top:0;height:16px;cursor:grab;display:flex;justify-content:center;align-items:center;color:var(--dim);letter-spacing:2px;font-size:10px}
+#grip:active{cursor:grabbing}
+#tbgrid{display:grid;grid-template-columns:repeat(var(--cols),var(--b));gap:2px}
+#resize{position:absolute;right:1px;bottom:1px;width:14px;height:14px;cursor:nwse-resize;border-bottom-right-radius:10px;
+  background:linear-gradient(135deg,transparent 0 55%,var(--dim) 55% 62%,transparent 62% 75%,var(--dim) 75% 82%,transparent 82%);opacity:.7}
+#resize:hover{opacity:1}
+.tb{width:var(--b);height:var(--b);border:0;border-radius:8px;background:transparent;color:var(--fg);display:grid;place-items:center;cursor:pointer;padding:0}
+.tb:hover{background:#ffffff14}
+.tb.on{background:var(--accent);color:#fff}
+.tb svg{width:calc(var(--b) * .56);height:calc(var(--b) * .56);fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.tb:disabled{opacity:.35;cursor:default;background:transparent}
+#swatch{width:calc(var(--b) * .56);height:calc(var(--b) * .56);border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #0008}
+
+.pop{position:fixed;display:none;padding:12px;z-index:3}
+#pop{width:204px}
+#pop .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
+#pop .c{width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;box-shadow:0 0 0 1px #0007 inset;padding:0}
+#pop .c.on{border-color:#fff}
+.row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:12px;color:var(--dim)}
+#pop input[type=range]{width:112px;accent-color:var(--accent)}
+#pop .custom{display:flex;align-items:center;gap:8px;margin-top:12px;color:var(--dim);cursor:pointer}
+#pop input[type=color]{width:34px;height:24px;border:1px solid var(--line);border-radius:6px;background:transparent;padding:0;cursor:pointer}
+#rotpop{width:268px}
+#rotpop .head{display:flex;align-items:center;justify-content:space-between;color:var(--dim)}
+#dial{display:block;margin:10px auto 0;width:170px;height:170px;cursor:grab;touch-action:none}
+#dial:active{cursor:grabbing}
+#rotval{width:76px;height:26px;border:1px solid var(--line);border-radius:6px;background:#0006;color:var(--fg);font:inherit;padding:0 6px;text-align:right}
+.mini{height:26px;padding:0 7px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer;font:inherit;white-space:nowrap}
+.mini:hover{border-color:#575b66}
+.note{color:var(--dim);font-size:11px;margin-top:10px;line-height:1.45}
+
+#top{position:fixed;right:16px;top:14px;display:flex;gap:8px;align-items:center;z-index:2}
+#name{color:var(--dim);margin-right:6px;max-width:36vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.btn{height:32px;padding:0 14px;border-radius:8px;border:1px solid var(--line);background:var(--panel);color:var(--fg);cursor:pointer;font:inherit}
+.btn:hover{border-color:#575b66}
+.btn:disabled{opacity:.5;cursor:default}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);padding:10px 14px;display:none;z-index:4;white-space:nowrap}
+#toast a{color:#ff9a9a;margin-left:12px;cursor:pointer;text-decoration:underline}
+#cropbar{position:fixed;display:none;gap:6px;z-index:2}
+#txt{position:fixed;display:none;background:transparent;border:1px dashed #ffffff90;outline:none;resize:none;overflow:hidden;padding:0;margin:0;white-space:pre;line-height:1.25;font-weight:600;font-family:system-ui,"Segoe UI",sans-serif;z-index:2;transform-origin:0 0}
+#hint{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);color:var(--dim);font-size:12px;pointer-events:none;white-space:nowrap}
+@media (max-width:640px){#name,#hint{display:none}}
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+
+<div id="tools" class="panel">
+  <div id="grip" title="Drag to move">• • •</div>
+  <div id="tbgrid">
+    <button class="tb" data-tool="select" title="Select / move (V)"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6.5 1.8L10 19z"/></svg></button>
+    <button class="tb" data-tool="brush" title="Brush (B)"><svg viewBox="0 0 24 24"><path d="M9 15l10-10a2 2 0 0 1 3 3L12 18"/><path d="M8 14c-2 0-4 1.5-4 4 0 1.2-.8 2-2 2 2 1.5 7 2 8.5-1.5.6-1.5 0-3.5-2.5-4.5z"/></svg></button>
+    <button class="tb" data-tool="text" title="Text (T)"><svg viewBox="0 0 24 24"><path d="M5 7V4h14v3M12 4v16M9 20h6"/></svg></button>
+    <button class="tb" id="addimg" title="Add image overlay (I) · you can also paste or drop one"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg></button>
+    <button class="tb" data-tool="crop" title="Crop (C) · drag the edges, Enter when done"><svg viewBox="0 0 24 24"><path d="M6 2v16h16M2 6h16v16"/></svg></button>
+    <button class="tb" id="rotbtn" title="Rotate (R)"><svg viewBox="0 0 24 24"><path d="M19.5 9.5a8 8 0 1 0-1.2 6.5"/><path d="M20 3.5v6h-6"/></svg></button>
+    <button class="tb" id="colorbtn" title="Colour &amp; size ( [ ] )"><span id="swatch"></span></button>
+    <button class="tb" id="undo" title="Undo (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
+    <button class="tb" id="redo" title="Redo (Ctrl+Y)"><svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
+  </div>
+  <div id="resize" title="Drag to resize / reshape the toolbar"></div>
+</div>
+
+<div id="pop" class="pop panel">
+  <div class="grid" id="colors"></div>
+  <label class="custom">Custom <input type="color" id="custom" value="#ff4040"></label>
+  <div class="row"><span>Size</span><input type="range" id="size" min="1" max="40" value="6"></div>
+</div>
+
+<div id="rotpop" class="pop panel">
+  <div class="head"><span>Rotate image</span><input id="rotval" type="number" step="0.1" value="0"></div>
+  <canvas id="dial" width="170" height="170" title="Drag around to spin"></canvas>
+  <div class="row"><button class="mini" data-q="-1" title="Turn image and canvas left">⟲ 90°</button><button class="mini" data-nudge="-0.1">‹ 0.1</button><button class="mini" data-zero>0°</button><button class="mini" data-nudge="0.1">0.1 ›</button><button class="mini" data-q="1" title="Turn image and canvas right">90° ⟳</button></div>
+  <div class="note">Drag around the dial to spin freely; drag out past its edge for finer control. Shift snaps to 15°, scrolling turns 1° (Shift 0.1°). The 90° buttons turn the canvas too.</div>
+</div>
+
+<div id="top">
+  <span id="name">{{NAME}}</span>
+  <button class="btn" id="out" title="Open the folder it's saved in">Output</button>
+  <button class="btn" id="copy" title="Copy image (Ctrl+C)">Copy</button>
+  <button class="btn primary" id="save" title="Choose where to save it (Ctrl+S)">Save as…</button>
+</div>
+
+<div id="cropbar"><button class="btn primary" id="cropok">Done</button><button class="btn" id="cropreset" title="Back to the original size and shape">Reset</button><button class="btn" id="cropno">Cancel</button></div>
+<textarea id="txt" spellcheck="false"></textarea>
+<input type="file" id="file" accept="image/*" hidden>
+<div id="toast" class="panel"></div>
+<div id="hint">scroll to zoom · right-drag to move around · double-click to fit</div>
+
+<script>
+"use strict";
+const TOKEN = "{{TOKEN}}";
+const $ = id => document.getElementById(id);
+const cv = $("view"), ctx = cv.getContext("2d");
+const mctx = document.createElement("canvas").getContext("2d");
+const COLORS = ["#ff4040","#ff8a00","#ffd400","#3ddc84","#00c8ff","#3b82f6","#8b5cf6","#ff4fd8","#ffffff","#a0a4ae","#3a3d46","#000000"];
+
+/*
+  Model
+    base   - the image (W x H). items (strokes, text, overlays) live in base-image coordinates.
+    angle  - rotation of the image (and its items) in degrees.
+    frame  - the canvas: an axis-aligned rect in "centred space" (origin = image centre, already rotated).
+             It starts as the original media size/shape; rotating turns the image inside it, cropping moves its edges.
+  The view shows centred space: screen = (ox, oy) + scale * centred.
+*/
+let base = null, items = [], angle = 0, frame = null, hist = [], redoStack = [];
+let tool = "select", color = "#ff4040", size = 6;
+let scale = 1, ox = 0, oy = 0, fitted = true;
+let sel = null, drag = null, editing = null, hover = null, spaceDown = false;
+let cropStart = null;   // snapshot when the crop tool was opened (for Cancel)
+
+// ------------------------------------------------------------ load
+const src = new Image();
+src.onload = () => { base = toCanvas(src); frame = fullFrame(); fit(); draw(); };
+src.onerror = () => toast("Couldn't load the image.");
+src.src = "/img/" + TOKEN;
+
+function toCanvas(im) {
+  const c = document.createElement("canvas");
+  c.width = im.naturalWidth || im.width; c.height = im.naturalHeight || im.height;
+  c.getContext("2d").drawImage(im, 0, 0);
+  return c;
+}
+const fullFrame = () => ({ x: -base.width / 2, y: -base.height / 2, w: base.width, h: base.height });
+
+// ------------------------------------------------------------ geometry
+const rad = () => angle * Math.PI / 180;
+const rotP = (x, y, a) => ({ x: x * Math.cos(a) - y * Math.sin(a), y: x * Math.sin(a) + y * Math.cos(a) });
+const baseToCen = (x, y) => rotP(x - base.width / 2, y - base.height / 2, rad());
+const cenToBase = (x, y) => { const p = rotP(x, y, -rad()); return { x: p.x + base.width / 2, y: p.y + base.height / 2 }; };
+const toCen = e => ({ x: (e.clientX - ox) / scale, y: (e.clientY - oy) / scale });
+const toImg = e => { const c = toCen(e); return cenToBase(c.x, c.y); };
+function imageSpace(c) { c.rotate(rad()); c.translate(-base.width / 2, -base.height / 2); }
+function imageBoundsCen() {
+  const pts = [[0, 0], [base.width, 0], [0, base.height], [base.width, base.height]].map(([x, y]) => baseToCen(x, y));
+  const xs = pts.map(p => p.x), ys = pts.map(p => p.y);
+  return { x: Math.min(...xs), y: Math.min(...ys), w: Math.max(...xs) - Math.min(...xs), h: Math.max(...ys) - Math.min(...ys) };
+}
+const union = (a, b) => { const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y); return { x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y }; };
+const frameScreen = () => ({ x: ox + frame.x * scale, y: oy + frame.y * scale, w: frame.w * scale, h: frame.h * scale });
+const font = s => `600 ${s}px system-ui,"Segoe UI",sans-serif`;
+const textSize = () => Math.round((size * 2.5 + 10) / scale);
+const cropping = () => tool === "crop";
+
+// ------------------------------------------------------------ view
+const dpr = () => window.devicePixelRatio || 1;
+function resize() { cv.width = innerWidth * dpr(); cv.height = innerHeight * dpr(); if (fitted) fit(); draw(); placeText(); }
+addEventListener("resize", resize);
+function fit() {
+  if (!base) return;
+  const r = cropping() ? union(frame, imageBoundsCen()) : frame, pad = 48;
+  scale = Math.min((innerWidth - pad * 2) / r.w, (innerHeight - pad * 2) / r.h, 1);
+  ox = innerWidth / 2 - scale * (r.x + r.w / 2); oy = innerHeight / 2 - scale * (r.y + r.h / 2);
+  fitted = true;
+}
+
+let checker = null;
+function checkerPattern() {
+  if (checker) return checker;
+  const c = document.createElement("canvas"); c.width = c.height = 16;
+  const x = c.getContext("2d"); x.fillStyle = "#2a2c33"; x.fillRect(0, 0, 16, 16); x.fillStyle = "#33363e"; x.fillRect(0, 0, 8, 8); x.fillRect(8, 8, 8, 8);
+  return checker = ctx.createPattern(c, "repeat");
+}
+
+function draw() {
+  const d = dpr();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, cv.width, cv.height);
+  if (!base) return;
+  const crop = cropping(), fs = frameScreen();
+
+  // Canvas backdrop: shadow + a checkerboard where the canvas will be transparent (e.g. rotated corners)
+  ctx.setTransform(d, 0, 0, d, 0, 0);
+  ctx.save(); ctx.shadowColor = "#000a"; ctx.shadowBlur = 30; ctx.fillStyle = "#000"; ctx.fillRect(fs.x, fs.y, fs.w, fs.h); ctx.restore();
+  ctx.fillStyle = checkerPattern(); ctx.fillRect(fs.x, fs.y, fs.w, fs.h);
+
+  ctx.setTransform(d * scale, 0, 0, d * scale, d * ox, d * oy);   // centred space
+  ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = "high";
+  const px = 1 / scale;
+  ctx.save();
+  if (!crop) { ctx.beginPath(); ctx.rect(frame.x, frame.y, frame.w, frame.h); ctx.clip(); }
+  ctx.save();
+  imageSpace(ctx);
+  renderDoc(ctx);
+  if (sel) {
+    const b = bounds(sel);
+    ctx.lineWidth = 1.5 * px; ctx.setLineDash([6 * px, 4 * px]); ctx.strokeStyle = "#fff";
+    ctx.strokeRect(b.x - 3 * px, b.y - 3 * px, b.w + 6 * px, b.h + 6 * px); ctx.setLineDash([]);
+    if (sel.t === "i") { const h = 10 * px; ctx.fillStyle = "#fff"; ctx.fillRect(b.x + b.w - h / 2, b.y + b.h - h / 2, h, h); }
+  }
+  if (tool === "brush" && hover && !drag) {
+    ctx.beginPath(); ctx.arc(hover.x, hover.y, size / 2 * px, 0, Math.PI * 2);
+    ctx.lineWidth = px; ctx.strokeStyle = "#fff"; ctx.stroke();
+  }
+  ctx.restore();
+  ctx.restore();
+
+  if (crop) {   // everything outside the canvas dimmed, edges + handles on it
+    ctx.setTransform(d, 0, 0, d, 0, 0);
+    ctx.fillStyle = "#000000b0"; ctx.beginPath();
+    ctx.rect(0, 0, innerWidth, innerHeight); ctx.rect(fs.x, fs.y, fs.w, fs.h); ctx.fill("evenodd");
+    ctx.strokeStyle = "#ffffff55"; ctx.lineWidth = 1; ctx.beginPath();
+    for (const k of [1, 2]) { ctx.moveTo(fs.x + fs.w * k / 3, fs.y); ctx.lineTo(fs.x + fs.w * k / 3, fs.y + fs.h); ctx.moveTo(fs.x, fs.y + fs.h * k / 3); ctx.lineTo(fs.x + fs.w, fs.y + fs.h * k / 3); }
+    ctx.stroke();
+    ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5; ctx.strokeRect(fs.x, fs.y, fs.w, fs.h);
+    ctx.fillStyle = "#fff";
+    const hs = 10;
+    for (const [hx, hy] of [[0, 0], [.5, 0], [1, 0], [0, .5], [1, .5], [0, 1], [.5, 1], [1, 1]]) {
+      const cx = fs.x + fs.w * hx, cy = fs.y + fs.h * hy;
+      if (hx === .5 || hy === .5) ctx.fillRect(cx - (hy === .5 ? 2 : 9), cy - (hy === .5 ? 9 : 2), hy === .5 ? 4 : 18, hy === .5 ? 18 : 4);
+      else ctx.fillRect(cx - hs / 2, cy - hs / 2, hs, hs);
+    }
+    ctx.font = "12px system-ui"; ctx.fillStyle = "#ffffffcc";
+    ctx.fillText(`${Math.round(frame.w)} × ${Math.round(frame.h)}`, fs.x + 4, fs.y - 8);
+  }
+  placeCropBar();
+}
+
+function renderDoc(c) { c.drawImage(base, 0, 0); for (const it of items) renderItem(c, it); }
+function renderItem(c, it) {
+  if (it.t === "s") {
+    const p = it.pts;
+    c.strokeStyle = it.c; c.lineWidth = it.w; c.lineCap = "round"; c.lineJoin = "round";
+    c.beginPath(); c.moveTo(p[0][0], p[0][1]);
+    if (p.length === 1) c.lineTo(p[0][0] + 0.01, p[0][1]);
+    for (let i = 1; i < p.length - 1; i++) c.quadraticCurveTo(p[i][0], p[i][1], (p[i][0] + p[i + 1][0]) / 2, (p[i][1] + p[i + 1][1]) / 2);
+    if (p.length > 1) c.lineTo(p[p.length - 1][0], p[p.length - 1][1]);
+    c.stroke();
+  } else if (it.t === "t") {
+    if (it === editing) return;
+    c.font = font(it.s); c.textBaseline = "top"; c.fillStyle = it.c;
+    it.v.split("\n").forEach((l, i) => c.fillText(l, it.x, it.y + i * it.s * 1.25));
+  } else if (it.t === "i") c.drawImage(it.img, it.x, it.y, it.w, it.h);
+}
+function bounds(it) {
+  if (it.t === "i") return { x: it.x, y: it.y, w: it.w, h: it.h };
+  if (it.t === "t") {
+    mctx.font = font(it.s);
+    const lines = it.v.split("\n");
+    return { x: it.x, y: it.y, w: Math.max(...lines.map(l => mctx.measureText(l).width), 4), h: lines.length * it.s * 1.25 };
+  }
+  let x1 = 1e9, y1 = 1e9, x2 = -1e9, y2 = -1e9;
+  for (const [x, y] of it.pts) { x1 = Math.min(x1, x); y1 = Math.min(y1, y); x2 = Math.max(x2, x); y2 = Math.max(y2, y); }
+  return { x: x1 - it.w / 2, y: y1 - it.w / 2, w: x2 - x1 + it.w, h: y2 - y1 + it.w };
+}
+function hitTest(p) {
+  for (let i = items.length - 1; i >= 0; i--) {
+    const it = items[i]; if (it.t === "s") continue;
+    const b = bounds(it), m = 4 / scale;
+    if (p.x >= b.x - m && p.x <= b.x + b.w + m && p.y >= b.y - m && p.y <= b.y + b.h + m) return it;
+  }
+  return null;
+}
+function onHandle(it, p) { const b = bounds(it), h = 9 / scale; return Math.abs(p.x - (b.x + b.w)) < h && Math.abs(p.y - (b.y + b.h)) < h; }
+
+// ------------------------------------------------------------ history
+function snap() { return { base, angle, frame: { ...frame }, items: items.map(it => ({ ...it, pts: it.pts ? it.pts.slice() : undefined })) }; }
+function commit() { hist.push(snap()); if (hist.length > 60) hist.shift(); redoStack = []; syncUndo(); }
+function restore(s) { base = s.base; items = s.items; angle = s.angle; frame = { ...s.frame }; sel = null; syncRot(); if (fitted) fit(); draw(); syncUndo(); }
+function undo() { finishText(); if (!hist.length) return; redoStack.push(snap()); restore(hist.pop()); }
+function redo() { finishText(); if (!redoStack.length) return; hist.push(snap()); restore(redoStack.pop()); }
+function syncUndo() { $("undo").disabled = !hist.length; $("redo").disabled = !redoStack.length; }
+
+// ------------------------------------------------------------ crop (non-destructive: just moves the canvas edges)
+function cropHandleAt(e) {
+  const r = frameScreen(), x = e.clientX, y = e.clientY, t = 10;
+  const inX = x >= r.x - t && x <= r.x + r.w + t, inY = y >= r.y - t && y <= r.y + r.h + t;
+  let h = "";
+  if (Math.abs(y - r.y) <= t && inX) h += "n"; else if (Math.abs(y - (r.y + r.h)) <= t && inX) h += "s";
+  if (Math.abs(x - r.x) <= t && inY) h += "w"; else if (Math.abs(x - (r.x + r.w)) <= t && inY) h += "e";
+  if (h) return h;
+  return x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h ? "move" : "new";
+}
+const cropCursor = h => ({ n: "ns-resize", s: "ns-resize", e: "ew-resize", w: "ew-resize", nw: "nwse-resize", se: "nwse-resize", ne: "nesw-resize", sw: "nesw-resize", move: "move", new: "crosshair" })[h];
+function dragCrop(e) {
+  const p = toCen(e), dx = p.x - drag.p0.x, dy = p.y - drag.p0.y, f0 = drag.f0, h = drag.h, min = 2;
+  let f = { ...f0 };
+  if (h === "move") { f.x += dx; f.y += dy; }
+  else if (h === "new") f = { x: Math.min(drag.p0.x, p.x), y: Math.min(drag.p0.y, p.y), w: Math.abs(dx), h: Math.abs(dy) };
+  else {
+    let x1 = f0.x, y1 = f0.y, x2 = f0.x + f0.w, y2 = f0.y + f0.h;
+    if (h.includes("w")) x1 += dx; if (h.includes("e")) x2 += dx;
+    if (h.includes("n")) y1 += dy; if (h.includes("s")) y2 += dy;
+    if (e.shiftKey && h.length === 2) {                           // Shift on a corner keeps the shape
+      const ar = f0.w / f0.h, w = Math.abs(x2 - x1), hh = w / ar;
+      if (h.includes("n")) y1 = y2 - hh * Math.sign(y2 - y1 || 1); else y2 = y1 + hh * Math.sign(y2 - y1 || 1);
+    }
+    f = { x: Math.min(x1, x2), y: Math.min(y1, y2), w: Math.abs(x2 - x1), h: Math.abs(y2 - y1) };
+  }
+  if (f.w >= min && f.h >= min) frame = f;
+  draw();
+}
+function cropDone(next) {
+  if (!cropStart) return;
+  const a = cropStart.frame, changed = a.x !== frame.x || a.y !== frame.y || a.w !== frame.w || a.h !== frame.h;
+  if (changed) { hist.push(cropStart); if (hist.length > 60) hist.shift(); redoStack = []; syncUndo(); }
+  cropStart = null; setTool(next || "select"); fit(); draw();
+}
+function cropCancel() { if (cropStart) frame = { ...cropStart.frame }; cropStart = null; setTool("select"); fit(); draw(); }
+function placeCropBar() {
+  const bar = $("cropbar");
+  if (!cropping() || (drag && drag.k === "crop")) { bar.style.display = "none"; return; }
+  const r = frameScreen();
+  bar.style.display = "flex";
+  bar.style.left = Math.max(8, Math.min(innerWidth - bar.offsetWidth - 8, r.x + r.w - bar.offsetWidth)) + "px";
+  bar.style.top = Math.max(8, Math.min(innerHeight - bar.offsetHeight - 8, r.y + r.h + 12)) + "px";
+}
+$("cropok").onclick = cropDone;
+$("cropno").onclick = cropCancel;
+$("cropreset").onclick = () => { frame = fullFrame(); if (angle % 180 !== 0 && Math.abs(angle) % 90 === 0) frame = { x: -base.height / 2, y: -base.width / 2, w: base.height, h: base.width }; fit(); draw(); };
+
+// ------------------------------------------------------------ pointer
+cv.addEventListener("contextmenu", e => e.preventDefault());
+cv.addEventListener("pointerdown", e => {
+  if (!base) return;
+  if (editing) { finishText(); if (tool === "text" && e.button === 0) return; }
+  closePops();
+  try { cv.setPointerCapture(e.pointerId); } catch (_) {}
+  const p = toImg(e);
+  if (e.button === 1 || e.button === 2 || spaceDown) {             // right / middle drag = move around
+    e.preventDefault();
+    drag = { k: "pan", sx: e.clientX, sy: e.clientY, ox, oy }; cv.style.cursor = "grabbing"; return;
+  }
+  if (e.button !== 0) return;
+
+  if (cropping()) { drag = { k: "crop", h: cropHandleAt(e), f0: { ...frame }, p0: toCen(e) }; return; }
+  if (tool === "brush") {
+    commit();
+    const s = { t: "s", c: color, w: size / scale, pts: [[p.x, p.y]] };
+    items.push(s); drag = { k: "draw", s }; draw(); return;
+  }
+  if (tool === "text") {
+    e.preventDefault(); // keep the browser from moving focus back to the page after we focus the text box
+    const hit = hitTest(p);
+    if (hit && hit.t === "t") startText(hit, false);
+    else { commit(); const t = { t: "t", x: p.x, y: p.y, s: textSize(), c: color, v: "" }; items.push(t); startText(t, true); }
+    return;
+  }
+  if (sel && sel.t === "i" && onHandle(sel, p)) { commit(); drag = { k: "resize", it: sel, ar: sel.w / sel.h }; return; }
+  const hit = hitTest(p);
+  if (hit) { sel = hit; commit(); drag = { k: "move", it: hit, dx: p.x - hit.x, dy: p.y - hit.y, moved: false }; draw(); return; }
+  sel = null; drag = { k: "pan", sx: e.clientX, sy: e.clientY, ox, oy }; draw();
+});
+
+cv.addEventListener("pointermove", e => {
+  const p = toImg(e);
+  if (!drag) {
+    hover = p;
+    if (cropping()) cv.style.cursor = cropCursor(cropHandleAt(e));
+    else if (tool === "select") cv.style.cursor = sel && sel.t === "i" && onHandle(sel, p) ? "nwse-resize" : hitTest(p) ? "move" : "grab";
+    if (tool === "brush") draw();
+    return;
+  }
+  if (drag.k === "pan") { ox = drag.ox + e.clientX - drag.sx; oy = drag.oy + e.clientY - drag.sy; fitted = false; draw(); placeText(); }
+  else if (drag.k === "crop") { fitted = false; dragCrop(e); }
+  else if (drag.k === "draw") { drag.s.pts.push([p.x, p.y]); draw(); }
+  else if (drag.k === "move") { drag.it.x = p.x - drag.dx; drag.it.y = p.y - drag.dy; drag.moved = true; draw(); }
+  else if (drag.k === "resize") { const it = drag.it; it.w = Math.max(8, p.x - it.x); it.h = it.w / drag.ar; draw(); }
+});
+
+cv.addEventListener("pointerup", () => {
+  if (!drag) return;
+  if (drag.k === "move" && !drag.moved) { hist.pop(); syncUndo(); }
+  const wasPan = drag.k === "pan";
+  drag = null;
+  if (wasPan) setTool(tool, true);
+  draw();
+});
+cv.addEventListener("pointerleave", () => { hover = null; if (tool === "brush") draw(); });
+
+cv.addEventListener("wheel", e => {
+  e.preventDefault();
+  if (!base) return;
+  const ns = Math.min(16, Math.max(0.05, scale * Math.exp(-e.deltaY * 0.0015)));
+  ox = e.clientX - (e.clientX - ox) * ns / scale; oy = e.clientY - (e.clientY - oy) * ns / scale;
+  scale = ns; fitted = false; draw(); placeText();
+}, { passive: false });
+
+cv.addEventListener("dblclick", e => {
+  if (cropping()) { cropDone(); return; }
+  const hit = hitTest(toImg(e));
+  if (hit && hit.t === "t") { setTool("text"); startText(hit, false); }
+  else if (!hit && tool === "select") { fit(); draw(); }
+});
+
+// ------------------------------------------------------------ text
+const ta = $("txt");
+function startText(it, isNew) {
+  if (!isNew) commit();
+  editing = it; it._new = isNew; sel = null;
+  ta.value = it.v; ta.style.color = it.c; ta.style.display = "block";
+  placeText(); draw();
+  ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
+  requestAnimationFrame(() => { if (editing === it && document.activeElement !== ta) ta.focus(); });
+}
+function placeText() {
+  if (!editing || !base) return;
+  const it = editing, p = baseToCen(it.x, it.y);
+  ta.style.left = (ox + p.x * scale) + "px"; ta.style.top = (oy + p.y * scale) + "px";
+  ta.style.fontSize = (it.s * scale) + "px";
+  ta.style.transform = `rotate(${angle}deg)`;
+  autosize();
+}
+function autosize() { ta.style.width = "8px"; ta.style.height = "8px"; ta.style.width = (ta.scrollWidth + 10) + "px"; ta.style.height = ta.scrollHeight + "px"; }
+ta.addEventListener("input", () => { if (editing) editing.v = ta.value; autosize(); });
+ta.addEventListener("keydown", e => {
+  e.stopPropagation();
+  if (e.key === "Escape" || (e.key === "Enter" && !e.shiftKey)) { e.preventDefault(); finishText(); }
+});
+ta.addEventListener("blur", () => { if (editing) finishText(); });
+function finishText() {
+  const it = editing; if (!it) return;
+  editing = null; ta.style.display = "none";
+  it.v = ta.value;
+  if (!it.v.trim()) { items = items.filter(x => x !== it); if (it._new) { hist.pop(); syncUndo(); } }
+  delete it._new;
+  draw();
+}
+
+// ------------------------------------------------------------ images
+const fileInput = $("file");
+$("addimg").onclick = () => fileInput.click();
+fileInput.onchange = () => { addImageFile(fileInput.files[0]); fileInput.value = ""; };
+document.addEventListener("paste", e => {
+  for (const i of e.clipboardData.items) if (i.type.startsWith("image/")) { addImageFile(i.getAsFile()); e.preventDefault(); return; }
+});
+addEventListener("dragover", e => e.preventDefault());
+addEventListener("drop", e => { e.preventDefault(); addImageFile(e.dataTransfer.files[0]); });
+function addImageFile(file) {
+  if (!file || !file.type.startsWith("image/") || !base) return;
+  const im = new Image();
+  im.onload = () => {
+    commit();
+    const k = Math.min(1, frame.w * 0.5 / im.width, frame.h * 0.5 / im.height);
+    const it = { t: "i", img: im, w: im.width * k, h: im.height * k };
+    const c = cenToBase(frame.x + frame.w / 2, frame.y + frame.h / 2);
+    it.x = c.x - it.w / 2; it.y = c.y - it.h / 2;
+    items.push(it); sel = it; setTool("select"); draw();
+  };
+  im.src = URL.createObjectURL(file);
+}
+
+// ------------------------------------------------------------ export
+function flatten() {
+  const c = document.createElement("canvas");
+  c.width = Math.max(1, Math.round(frame.w)); c.height = Math.max(1, Math.round(frame.h));
+  const x = c.getContext("2d"); x.imageSmoothingQuality = "high";
+  x.translate(-frame.x, -frame.y); imageSpace(x); renderDoc(x);
+  return c;
+}
+
+// ------------------------------------------------------------ rotation dial (spins freely, no end stops)
+const rotpop = $("rotpop"), dial = $("dial"), rotval = $("rotval"), dctx = dial.getContext("2d");
+function norm180(v) { v = ((v + 180) % 360 + 360) % 360 - 180; return v === -180 ? 180 : Math.round(v * 100) / 100; }
+function setAngle(v) {
+  if (!base) return;
+  angle = norm180(v);
+  if (fitted) fit();
+  syncRot(); draw(); placeText();
+}
+/** ±90°: the image and the canvas turn together (like Image → Rotate 90° elsewhere). */
+function quarterTurn(dir) {
+  if (!base) return;
+  finishText(); commit();
+  const f = frame;
+  frame = dir > 0 ? { x: -(f.y + f.h), y: f.x, w: f.h, h: f.w } : { x: f.y, y: -(f.x + f.w), w: f.h, h: f.w };
+  setAngle(angle + dir * 90);
+}
+function syncRot() {
+  if (document.activeElement !== rotval) rotval.value = angle.toFixed(1);
+  drawDial();
+}
+function drawDial() {
+  const d = dpr(), S = 170;
+  if (dial.width !== S * d) { dial.width = dial.height = S * d; }
+  dctx.setTransform(d, 0, 0, d, 0, 0);
+  dctx.clearRect(0, 0, S, S);
+  const c = S / 2, R = 72;
+  dctx.strokeStyle = "#ffffff22"; dctx.lineWidth = 10; dctx.beginPath(); dctx.arc(c, c, R - 6, 0, Math.PI * 2); dctx.stroke();
+  for (let deg = 0; deg < 360; deg += 15) {
+    const a = (deg - 90) * Math.PI / 180, long = deg % 90 === 0, mid = deg % 45 === 0;
+    const r1 = R - (long ? 16 : mid ? 12 : 8);
+    dctx.strokeStyle = long ? "#ffffffaa" : "#ffffff55"; dctx.lineWidth = long ? 2 : 1;
+    dctx.beginPath(); dctx.moveTo(c + Math.cos(a) * r1, c + Math.sin(a) * r1); dctx.lineTo(c + Math.cos(a) * R, c + Math.sin(a) * R); dctx.stroke();
+  }
+  const a = (angle - 90) * Math.PI / 180;
+  dctx.strokeStyle = "#ff4040"; dctx.lineWidth = 3; dctx.lineCap = "round";
+  dctx.beginPath(); dctx.moveTo(c, c); dctx.lineTo(c + Math.cos(a) * (R - 6), c + Math.sin(a) * (R - 6)); dctx.stroke();
+  dctx.fillStyle = "#ff4040"; dctx.beginPath(); dctx.arc(c + Math.cos(a) * (R - 6), c + Math.sin(a) * (R - 6), 7, 0, Math.PI * 2); dctx.fill();
+  dctx.fillStyle = "#1a1c22"; dctx.beginPath(); dctx.arc(c, c, 26, 0, Math.PI * 2); dctx.fill();
+  dctx.fillStyle = "#e8e9ee"; dctx.font = "600 14px system-ui"; dctx.textAlign = "center"; dctx.textBaseline = "middle";
+  dctx.fillText(angle.toFixed(1) + "°", c, c);
+}
+function dialAngle(e) {
+  const r = dial.getBoundingClientRect(), dx = e.clientX - (r.left + r.width / 2), dy = e.clientY - (r.top + r.height / 2);
+  return { deg: Math.atan2(dx, -dy) * 180 / Math.PI, dist: Math.hypot(dx, dy) };
+}
+let dialDrag = null;
+dial.addEventListener("pointerdown", e => {
+  if (!base) return;
+  try { dial.setPointerCapture(e.pointerId); } catch (_) {}
+  finishText(); commit();
+  dialDrag = { last: dialAngle(e).deg, total: angle };
+});
+dial.addEventListener("pointermove", e => {
+  if (!dialDrag) return;
+  const { deg, dist } = dialAngle(e);
+  let delta = deg - dialDrag.last;
+  if (delta > 180) delta -= 360; if (delta < -180) delta += 360;  // unwrap so it spins round and round
+  dialDrag.last = deg;
+  // On the dial it turns 1:1 (once round = 360°); drag out past its edge for finer and finer control.
+  const gain = dist <= 85 ? 1 : Math.max(0.1, 85 / dist);
+  dialDrag.total += delta * gain;
+  setAngle(e.shiftKey ? Math.round(dialDrag.total / 15) * 15 : dialDrag.total);
+});
+dial.addEventListener("pointerup", () => dialDrag = null);
+dial.addEventListener("wheel", e => { e.preventDefault(); commit(); setAngle(angle + (e.deltaY < 0 ? 1 : -1) * (e.shiftKey ? 0.1 : 1)); }, { passive: false });
+rotval.addEventListener("change", () => { const v = parseFloat(rotval.value); if (!isNaN(v)) { commit(); setAngle(v); } });
+rotval.addEventListener("keydown", e => e.stopPropagation());
+rotpop.querySelectorAll("[data-q]").forEach(b => b.onclick = () => quarterTurn(+b.dataset.q));
+rotpop.querySelectorAll("[data-nudge]").forEach(b => b.onclick = () => { commit(); setAngle(angle + +b.dataset.nudge); });
+rotpop.querySelector("[data-zero]").onclick = () => { commit(); setAngle(0); };
+
+// ------------------------------------------------------------ tools, colour, size, pop-outs
+function setTool(t, keepView) {
+  const wasCrop = cropping();
+  if (t === "crop" && !wasCrop) { finishText(); cropStart = snap(); }
+  if (t !== "crop" && wasCrop && cropStart) { cropDone(t); return; }   // leaving crop keeps the new canvas
+  tool = t;
+  document.querySelectorAll("[data-tool]").forEach(b => b.classList.toggle("on", b.dataset.tool === t));
+  cv.style.cursor = t === "brush" ? "none" : t === "text" ? "text" : t === "crop" ? "crosshair" : "grab";
+  if (t !== "select") sel = null;
+  if (!keepView && (t === "crop") !== wasCrop && fitted) fit();
+  draw();
+}
+document.querySelectorAll("[data-tool]").forEach(b => b.onclick = () => setTool(b.dataset.tool));
+
+const pop = $("pop");
+COLORS.forEach(c => {
+  const b = document.createElement("button");
+  b.className = "c"; b.style.background = c; b.dataset.c = c; b.title = c;
+  b.onclick = () => setColor(c);
+  $("colors").appendChild(b);
+});
+function setColor(c) {
+  color = c; $("swatch").style.background = c; $("custom").value = c;
+  document.querySelectorAll("#colors .c").forEach(b => b.classList.toggle("on", b.dataset.c === c));
+  if (sel && sel.t === "t") { commit(); sel.c = c; draw(); }
+  if (editing) { editing.c = c; ta.style.color = c; }
+}
+function setSize(s) { size = Math.max(1, Math.min(40, s)); $("size").value = size; draw(); }
+$("custom").oninput = e => setColor(e.target.value);
+$("size").oninput = e => setSize(+e.target.value);
+
+let openPop = null, openBtn = null;
+function togglePop(p, btn) { if (openPop === p) { closePops(); return; } closePops(); p.style.display = "block"; openPop = p; openBtn = btn; positionPop(); btn.classList.add("on"); if (p === rotpop) drawDial(); }
+function closePops() { for (const p of [pop, rotpop]) p.style.display = "none"; if (openBtn) openBtn.classList.remove("on"); openPop = openBtn = null; }
+/** Beside the toolbar when there's room, otherwise below / left / above it, lined up with the button. */
+function positionPop() {
+  if (!openPop) return;
+  const t = tools.getBoundingClientRect(), b = openBtn.getBoundingClientRect(), pw = openPop.offsetWidth, ph = openPop.offsetHeight, m = 8;
+  const clampX = x => Math.max(m, Math.min(innerWidth - pw - m, x)), clampY = y => Math.max(m, Math.min(innerHeight - ph - m, y));
+  let x, y;
+  if (t.right + m + pw <= innerWidth) { x = t.right + m; y = clampY(b.top - 12); }
+  else if (t.bottom + m + ph <= innerHeight) { x = clampX(b.left - 12); y = t.bottom + m; }
+  else if (t.left - m - pw >= 0) { x = t.left - m - pw; y = clampY(b.top - 12); }
+  else { x = clampX(b.left - 12); y = Math.max(m, t.top - m - ph); }
+  openPop.style.left = x + "px"; openPop.style.top = y + "px";
+}
+$("colorbtn").onclick = e => { e.stopPropagation(); togglePop(pop, $("colorbtn")); };
+$("rotbtn").onclick = e => { e.stopPropagation(); togglePop(rotpop, $("rotbtn")); };
+document.addEventListener("pointerdown", e => {
+  if (openPop && !openPop.contains(e.target) && !openBtn.contains(e.target)) closePops();
+}, true);
+// Toolbar buttons and swatches don't take focus, so recolouring text while typing it works.
+document.addEventListener("mousedown", e => { if (e.target.closest(".tb, .c, .mini")) e.preventDefault(); });
+
+// ------------------------------------------------------------ movable + resizable toolbar (remembered)
+const tools = $("tools"), grip = $("grip"), tbgrid = $("tbgrid");
+let layout = { x: 16, y: 84, cols: 1, b: 36 };
+function applyLayout() {
+  tools.style.setProperty("--cols", layout.cols); tools.style.setProperty("--b", layout.b + "px");
+  // Clamp only what's shown, so a briefly tiny window doesn't overwrite the remembered position.
+  const x = Math.max(4, Math.min(innerWidth - tools.offsetWidth - 4, layout.x));
+  const y = Math.max(4, Math.min(innerHeight - tools.offsetHeight - 4, layout.y));
+  tools.style.left = x + "px"; tools.style.top = y + "px";
+  positionPop();
+}
+function saveLayout() { try { localStorage.setItem("gyzer.toolbar", JSON.stringify(layout)); } catch (_) {} }
+/** Pick the column count that gives the biggest buttons for a given box: wide = a row, tall = a column, square = a grid. */
+function layoutFor(w, h) {
+  const n = tbgrid.children.length, gap = 2, padX = 12, padY = 22;
+  let best = null;
+  for (let cols = 1; cols <= n; cols++) {
+    const rows = Math.ceil(n / cols);
+    const b = Math.min((w - padX - gap * (cols - 1)) / cols, (h - padY - gap * (rows - 1)) / rows);
+    const sizeB = Math.max(24, Math.min(72, Math.floor(b)));
+    const fitScore = Math.abs(Math.log((cols / rows) / (w / h)));
+    if (!best || b > best.raw + 0.5 || (Math.abs(b - best.raw) <= 0.5 && fitScore < best.fit) || (sizeB === 72 && best.b === 72 && fitScore < best.fit))
+      best = { cols, b: sizeB, raw: b, fit: fitScore };
+  }
+  return { cols: best.cols, b: best.b };
+}
+grip.addEventListener("pointerdown", e => {
+  grip.setPointerCapture(e.pointerId);
+  const dx = e.clientX - tools.offsetLeft, dy = e.clientY - tools.offsetTop;
+  const mv = ev => {
+    layout.x = Math.max(4, Math.min(innerWidth - tools.offsetWidth - 4, ev.clientX - dx));
+    layout.y = Math.max(4, Math.min(innerHeight - tools.offsetHeight - 4, ev.clientY - dy));
+    applyLayout();
+  };
+  const up = () => { grip.removeEventListener("pointermove", mv); grip.removeEventListener("pointerup", up); saveLayout(); };
+  grip.addEventListener("pointermove", mv); grip.addEventListener("pointerup", up);
+});
+$("resize").addEventListener("pointerdown", e => {
+  e.preventDefault(); e.stopPropagation();
+  const r = $("resize"); r.setPointerCapture(e.pointerId);
+  const sx = e.clientX, sy = e.clientY, w0 = tools.offsetWidth, h0 = tools.offsetHeight;
+  const mv = ev => { Object.assign(layout, layoutFor(Math.max(40, w0 + ev.clientX - sx), Math.max(40, h0 + ev.clientY - sy))); applyLayout(); };
+  const up = () => { r.removeEventListener("pointermove", mv); r.removeEventListener("pointerup", up); saveLayout(); };
+  r.addEventListener("pointermove", mv); r.addEventListener("pointerup", up);
+});
+try { const l = JSON.parse(localStorage.getItem("gyzer.toolbar") || "null"); if (l) layout = Object.assign(layout, l); } catch (_) {}
+addEventListener("resize", applyLayout);
+
+// ------------------------------------------------------------ save as / copy / output
+const pngBlob = () => new Promise(r => flatten().toBlob(r, "image/png"));
+let saving = false;
+async function saveAs() {
+  if (!base || saving) return;
+  finishText();
+  if (cropping()) cropDone();
+  saving = true; $("save").disabled = true; $("save").textContent = "Choose where…";
+  try {
+    const res = await fetch("/saveas/" + TOKEN, { method: "POST", body: await pngBlob() });
+    if (!res.ok) throw new Error("error " + res.status);
+    const j = await res.json();
+    if (!j.cancelled) toast("Saved as " + j.name, true);
+  } catch (e) { toast("Couldn't save: " + e.message + ". Is Grim's Gyzer still running?"); }
+  finally { saving = false; $("save").disabled = false; $("save").textContent = "Save as…"; }
+}
+async function copy() {
+  if (!base) return;
+  finishText();
+  try { await navigator.clipboard.write([new ClipboardItem({ "image/png": await pngBlob() })]); toast("Copied to clipboard"); }
+  catch (e) { toast("Copy failed: " + e.message); }
+}
+const reveal = () => fetch("/reveal/" + TOKEN, { method: "POST" }).catch(() => toast("Couldn't open the folder. Is Grim's Gyzer still running?"));
+$("save").onclick = saveAs;
+$("copy").onclick = copy;
+$("out").onclick = reveal;
+
+let toastTimer;
+function toast(msg, withReveal) {
+  const t = $("toast");
+  t.textContent = msg;
+  if (withReveal) { const a = document.createElement("a"); a.textContent = "Show in folder"; a.onclick = reveal; t.appendChild(a); }
+  t.style.display = "block"; $("hint").style.display = "none";
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.display = "none", 5000);
+}
+
+// ------------------------------------------------------------ keyboard
+document.addEventListener("keydown", e => {
+  if (editing || e.target.tagName === "INPUT") return;
+  const k = e.key.toLowerCase();
+  if (e.ctrlKey || e.metaKey) {
+    if (k === "z" && !e.shiftKey) undo();
+    else if (k === "y" || (k === "z" && e.shiftKey)) redo();
+    else if (k === "s") saveAs();
+    else if (k === "c") copy();
+    else return;
+    e.preventDefault(); return;
+  }
+  if (k === " ") { spaceDown = true; cv.style.cursor = "grab"; e.preventDefault(); return; }
+  if (k === "escape") { if (cropping()) cropCancel(); else { sel = null; closePops(); draw(); } }
+  else if (k === "enter" && cropping()) cropDone();
+  else if ((k === "delete" || k === "backspace") && sel) { commit(); items = items.filter(x => x !== sel); sel = null; draw(); }
+  else if (k === "v") setTool("select");
+  else if (k === "b") setTool("brush");
+  else if (k === "t") setTool("text");
+  else if (k === "c") setTool("crop");
+  else if (k === "r") togglePop(rotpop, $("rotbtn"));
+  else if (k === "i") fileInput.click();
+  else if (k === "[") setSize(size - 1);
+  else if (k === "]") setSize(size + 1);
+  else if (k === "0") { fit(); draw(); }
+});
+document.addEventListener("keyup", e => { if (e.key === " ") { spaceDown = false; setTool(tool, true); } });
+
+setColor(color); setSize(size); tool = "select"; setTool("select"); syncUndo(); resize(); applyLayout(); drawDial();
+</script>
+</body>
+</html>

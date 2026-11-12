@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>GrimsGyzerSetup</AssemblyName>
+    <RootNamespace>GrimsGyzerSetup</RootNamespace>
+    <ApplicationManifest>..\app.manifest</ApplicationManifest>
+    <ApplicationIcon>..\app.ico</ApplicationIcon>
+    <PlatformTarget>AnyCPU</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <DebugType>none</DebugType>
+    <Product>Grim's Gyzer Setup</Product>
+    <Version>1.4.0</Version>
+  </PropertyGroup>
+
+  <!-- The only payload is the app itself (~100 KB). Dependencies are fetched per feature at install time. -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\bin\Release\net48\GrimsGyzer.exe" LogicalName="payload.GrimsGyzer.exe" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Management" />
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+  </ItemGroup>
+
+</Project>

@@ -1,0 +1,20 @@
+# Build output
+bin/
+obj/
+setup/bin/
+setup/obj/
+
+# Packaged installer / portable zip: published as GitHub Release assets instead
+dist/
+
+# Local copy of ffmpeg for builds (~100 MB, GPL). The installer downloads it; build.ps1 -Portable fetches it.
+deps/
+
+# Editors / OS
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+Thumbs.db
+desktop.ini
