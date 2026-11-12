@@ -5,11 +5,11 @@ using System.IO;
 using System.Media;
 using System.Threading.Tasks;
 
-namespace GrimsGyzer
+namespace GrimsGhost
 {
     /// <summary>
     /// Soft, warm feedback sounds, synthesised in code (no sound files). Played asynchronously.
-    /// Recordings never contain them: default system sound is captured as "everything except Grim's Gyzer",
+    /// Recordings never contain them: default system sound is captured as "everything except Grim's Ghost",
     /// and on older Windows the loopback capture is muted for the short moment a sound plays.
     /// </summary>
     static class SoundFx

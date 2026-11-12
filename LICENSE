@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2026 GrimLeeIV and Grim's Gyzer contributors
+Copyright (c) 2026 GrimLeeIV and Grim's Ghost contributors
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -22,7 +22,7 @@ SOFTWARE.
 
 ---
 
-Grim's Gyzer can use ffmpeg (https://ffmpeg.org) for video recording and
+Grim's Ghost can use ffmpeg (https://ffmpeg.org) for video recording and
 instant replay. ffmpeg is a separate program under its own license (LGPL/GPL);
 it is not part of this repository. The installer downloads it from gyan.dev on
 request, and its license is kept next to it as ffmpeg-LICENSE.txt.

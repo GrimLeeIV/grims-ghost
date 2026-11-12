@@ -5,11 +5,11 @@ using System.Reflection;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
-namespace GrimsGyzer
+namespace GrimsGhost
 {
     static class Shell
     {
-        const string LinkName = "Grim's Gyzer.lnk";
+        const string LinkName = "Grim's Ghost.lnk";
 
         /// <summary>
         /// Start Menu entry (makes the app show up in Windows search) kept pointing at this exe,
@@ -21,6 +21,12 @@ namespace GrimsGyzer
             try
             {
                 MakeShortcut(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), LinkName), exe, false);
+                // Leftovers from the app's earlier name, once the program they point at is gone.
+                foreach (var folder in new[] { Environment.SpecialFolder.Programs, Environment.SpecialFolder.DesktopDirectory })
+                {
+                    var old = Path.Combine(Environment.GetFolderPath(folder), "Grim's Gyzer.lnk");
+                    if (File.Exists(old) && !File.Exists(ShortcutTarget(old))) try { File.Delete(old); } catch { }
+                }
                 bool installed = File.Exists(Path.Combine(Path.GetDirectoryName(exe), "Setup.exe")); // installer owns the desktop icon
                 if (!s.DesktopShortcutCreated && !installed)
                 {
@@ -30,6 +36,18 @@ namespace GrimsGyzer
                 }
             }
             catch (Exception ex) { Log.Write("shortcuts: " + ex.Message); }
+        }
+
+        static string ShortcutTarget(string lnk)
+        {
+            try
+            {
+                var shellType = Type.GetTypeFromProgID("WScript.Shell");
+                object shell = Activator.CreateInstance(shellType);
+                object sc = shellType.InvokeMember("CreateShortcut", BindingFlags.InvokeMethod, null, shell, new object[] { lnk });
+                return (string)sc.GetType().InvokeMember("TargetPath", BindingFlags.GetProperty, null, sc, null) ?? "";
+            }
+            catch { return ""; }
         }
 
         static void MakeShortcut(string lnk, string exe, bool force)

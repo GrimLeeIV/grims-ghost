@@ -7,7 +7,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace GrimsGyzer
+namespace GrimsGhost
 {
     sealed class TrayApp : ApplicationContext
     {
@@ -56,7 +56,7 @@ namespace GrimsGyzer
             menu = new ContextMenuStrip { ShowImageMargin = false };
             menu.Items.AddRange(new ToolStripItem[] { miShot, miRec, miReplay, new ToolStripSeparator(), miOut, miSet, new ToolStripSeparator(), miClose });
 
-            tray = new NotifyIcon { Icon = iconIdle, Text = "Grim's Gyzer", ContextMenuStrip = menu, Visible = true };
+            tray = new NotifyIcon { Icon = iconIdle, Text = "Grim's Ghost", ContextMenuStrip = menu, Visible = true };
             tray.MouseUp += (a, e) => { if (e.Button == MouseButtons.Left) Shell.ShowTrayMenu(tray); };
 
             hotkeys = new HotkeyWindow();
@@ -76,7 +76,7 @@ namespace GrimsGyzer
 
             Shell.EnsureShortcuts(s);
             if (!silentStart)
-                Balloon("Grim's Gyzer is running",
+                Balloon("Grim's Ghost is running",
                     $"{Hotkey.Format(s.CaptureHotkey, "+")} screenshot  ·  {Hotkey.Format(s.RecordHotkey, "+")} record.  Click the tray icon for the menu.",
                     ToolTipIcon.None);
             ScreenGrab.TrimMemory();
@@ -235,7 +235,7 @@ namespace GrimsGyzer
             recFfmpeg = Ffmpeg.Find(s.FfmpegPath);
             if (recFfmpeg == null)
             {
-                Balloon("ffmpeg.exe not found", "Video recording needs ffmpeg. Put ffmpeg.exe next to GrimsGyzer.exe, or set its path in Settings.", ToolTipIcon.Warning);
+                Balloon("ffmpeg.exe not found", "Video recording needs ffmpeg. Put ffmpeg.exe next to GrimsGhost.exe, or set its path in Settings.", ToolTipIcon.Warning);
                 return;
             }
 
@@ -332,7 +332,7 @@ namespace GrimsGyzer
         {
             bool live = rec == RecState.Starting || rec == RecState.Recording || rec == RecState.Stopping;
             tray.Icon = live ? iconRec : replay != null ? iconReplay : iconIdle;
-            tray.Text = live ? "Grim's Gyzer — recording" : replay != null ? "Grim's Gyzer — instant replay on" : "Grim's Gyzer";
+            tray.Text = live ? "Grim's Ghost — recording" : replay != null ? "Grim's Ghost — instant replay on" : "Grim's Ghost";
             miRec.Text = rec == RecState.Idle ? "Record video" : rec == RecState.Countdown ? "Cancel countdown" : "Stop recording";
             miReplay.Checked = replay != null;
         }
@@ -391,7 +391,7 @@ namespace GrimsGyzer
             replaySaving = true;
             SoundFx.Play(SoundFx.Kind.RecordStart);          // "got it"
             tray.Icon = iconRec;
-            tray.Text = "Grim's Gyzer — saving replay…";
+            tray.Text = "Grim's Ghost — saving replay…";
             string path = Output.VideoPath(s, DateTime.Now).Replace("Recording ", "Replay ");
             var started = DateTime.Now;
 
@@ -407,7 +407,7 @@ namespace GrimsGyzer
             };
             slow.Start();
             var tick = new Timer { Interval = 1000 };
-            tick.Tick += (a, b) => { if (replaySaving) tray.Text = $"Grim's Gyzer — saving replay… {(int)(DateTime.Now - started).TotalSeconds} s"; };
+            tick.Tick += (a, b) => { if (replaySaving) tray.Text = $"Grim's Ghost — saving replay… {(int)(DateTime.Now - started).TotalSeconds} s"; };
             tick.Start();
 
             System.Threading.Tasks.Task.Run(() =>

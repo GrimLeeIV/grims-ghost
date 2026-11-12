@@ -4,7 +4,7 @@ using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 using System.Windows.Forms;
 
-namespace GrimsGyzer
+namespace GrimsGhost
 {
     /// <summary>
     /// Click-through, never-focused, always-on-top border around the recording area.

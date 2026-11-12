@@ -10,7 +10,7 @@ using System.Text.RegularExpressions;
 using System.Threading;
 using System.Windows.Forms;
 
-namespace GrimsGyzer
+namespace GrimsGhost
 {
     /// <summary>
     /// "Instant replay": continuously records one display into a small rolling set of 2-second segments
@@ -51,7 +51,7 @@ namespace GrimsGyzer
             o = options;
             o.Seconds = Math.Max(5, Math.Min(MaxSeconds, o.Seconds));
             // Own folder per session, so an old buffer shutting down can never delete a new buffer's segments.
-            dir = Path.Combine(Path.GetTempPath(), "GrimsGyzer", "replay-" + Guid.NewGuid().ToString("N").Substring(0, 8));
+            dir = Path.Combine(Path.GetTempPath(), "GrimsGhost", "replay-" + Guid.NewGuid().ToString("N").Substring(0, 8));
         }
 
         public void Start()
@@ -204,7 +204,7 @@ namespace GrimsGyzer
                 var timer = Stopwatch.StartNew();
                 Log.Write($"replay save: {segs.Count} segments, {segs.Sum(f => f.Length) / 1048576} MB -> {outPath}");
 
-                string work = Path.Combine(Path.GetTempPath(), "GrimsGyzer", "save-" + Guid.NewGuid().ToString("N"));
+                string work = Path.Combine(Path.GetTempPath(), "GrimsGhost", "save-" + Guid.NewGuid().ToString("N"));
                 Directory.CreateDirectory(work);
                 try
                 {

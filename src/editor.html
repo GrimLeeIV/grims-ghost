@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>{{NAME}} · Grim's Gyzer</title>
+<title>{{NAME}} · Grim's Ghost</title>
 <style>
 :root{--bg:#0e0f12;--panel:#1a1c22f2;--line:#2c2f38;--fg:#e8e9ee;--dim:#8b8f9c;--accent:#ff4040}
 *{box-sizing:border-box}
@@ -14,6 +14,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:13px sy
 #tools{position:fixed;left:16px;top:84px;padding:16px 6px 6px;z-index:2;--b:36px;--cols:1}
 #grip{position:absolute;left:0;right:0;top:0;height:16px;cursor:grab;display:flex;justify-content:center;align-items:center;color:var(--dim);letter-spacing:2px;font-size:10px}
 #grip:active{cursor:grabbing}
+#collapse{position:absolute;right:3px;top:1px;width:16px;height:14px;padding:0;border:0;border-radius:4px;background:transparent;color:var(--dim);font:bold 12px/12px system-ui;cursor:pointer}
+#collapse:hover{background:#ffffff1a;color:var(--fg)}
+#tab{position:fixed;display:none;width:18px;height:64px;z-index:2;cursor:pointer;color:var(--dim);font:bold 14px system-ui;align-items:center;justify-content:center;border-radius:0 10px 10px 0;padding:0}
+#tab:hover{color:var(--fg);background:#262932f2}
+#tab.right{border-radius:10px 0 0 10px}
 #tbgrid{display:grid;grid-template-columns:repeat(var(--cols),var(--b));gap:2px}
 #resize{position:absolute;right:1px;bottom:1px;width:14px;height:14px;cursor:nwse-resize;border-bottom-right-radius:10px;
   background:linear-gradient(135deg,transparent 0 55%,var(--dim) 55% 62%,transparent 62% 75%,var(--dim) 75% 82%,transparent 82%);opacity:.7}
@@ -38,6 +43,11 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:13px sy
 #rotpop .head{display:flex;align-items:center;justify-content:space-between;color:var(--dim)}
 #dial{display:block;margin:10px auto 0;width:170px;height:170px;cursor:grab;touch-action:none}
 #dial:active{cursor:grabbing}
+#ocrpop{width:380px}
+#ocrpop .head{display:flex;align-items:center;justify-content:space-between;color:var(--dim)}
+#ocrstatus{font-size:11px}
+#ocrtext{display:block;width:100%;height:260px;margin-top:10px;resize:vertical;border:1px solid var(--line);border-radius:8px;background:#0007;color:var(--fg);font:12.5px/1.45 Consolas,"Cascadia Mono",monospace;padding:8px;white-space:pre;overflow:auto;user-select:text;outline:none}
+#ocrtext:focus{border-color:#575b66}
 #rotval{width:76px;height:26px;border:1px solid var(--line);border-radius:6px;background:#0006;color:var(--fg);font:inherit;padding:0 6px;text-align:right}
 .mini{height:26px;padding:0 7px;border-radius:6px;border:1px solid var(--line);background:transparent;color:var(--fg);cursor:pointer;font:inherit;white-space:nowrap}
 .mini:hover{border-color:#575b66}
@@ -61,7 +71,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:13px sy
 <canvas id="view"></canvas>
 
 <div id="tools" class="panel">
-  <div id="grip" title="Drag to move">• • •</div>
+  <div id="grip" title="Drag to move">• • •<button id="collapse" title="Tuck the toolbar into the side">‹</button></div>
   <div id="tbgrid">
     <button class="tb" data-tool="select" title="Select / move (V)"><svg viewBox="0 0 24 24"><path d="M5 3l14 8-6.5 1.8L10 19z"/></svg></button>
     <button class="tb" data-tool="brush" title="Brush (B)"><svg viewBox="0 0 24 24"><path d="M9 15l10-10a2 2 0 0 1 3 3L12 18"/><path d="M8 14c-2 0-4 1.5-4 4 0 1.2-.8 2-2 2 2 1.5 7 2 8.5-1.5.6-1.5 0-3.5-2.5-4.5z"/></svg></button>
@@ -69,12 +79,15 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:13px sy
     <button class="tb" id="addimg" title="Add image overlay (I) · you can also paste or drop one"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.6"/><path d="M21 16l-5-5-8 8"/></svg></button>
     <button class="tb" data-tool="crop" title="Crop (C) · drag the edges, Enter when done"><svg viewBox="0 0 24 24"><path d="M6 2v16h16M2 6h16v16"/></svg></button>
     <button class="tb" id="rotbtn" title="Rotate (R)"><svg viewBox="0 0 24 24"><path d="M19.5 9.5a8 8 0 1 0-1.2 6.5"/><path d="M20 3.5v6h-6"/></svg></button>
+    <button class="tb" id="ocrbtn" title="Read text from the image (O)"><svg viewBox="0 0 24 24"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M7 9h10M7 12.5h10M7 16h6"/></svg></button>
     <button class="tb" id="colorbtn" title="Colour &amp; size ( [ ] )"><span id="swatch"></span></button>
     <button class="tb" id="undo" title="Undo (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
     <button class="tb" id="redo" title="Redo (Ctrl+Y)"><svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
   </div>
   <div id="resize" title="Drag to resize / reshape the toolbar"></div>
 </div>
+
+<div id="tab" class="panel" title="Show the toolbar">›</div>
 
 <div id="pop" class="pop panel">
   <div class="grid" id="colors"></div>
@@ -87,6 +100,13 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:13px sy
   <canvas id="dial" width="170" height="170" title="Drag around to spin"></canvas>
   <div class="row"><button class="mini" data-q="-1" title="Turn image and canvas left">⟲ 90°</button><button class="mini" data-nudge="-0.1">‹ 0.1</button><button class="mini" data-zero>0°</button><button class="mini" data-nudge="0.1">0.1 ›</button><button class="mini" data-q="1" title="Turn image and canvas right">90° ⟳</button></div>
   <div class="note">Drag around the dial to spin freely; drag out past its edge for finer control. Shift snaps to 15°, scrolling turns 1° (Shift 0.1°). The 90° buttons turn the canvas too.</div>
+</div>
+
+<div id="ocrpop" class="pop panel">
+  <div class="head"><span>Text in this image</span><span id="ocrstatus"></span></div>
+  <textarea id="ocrtext" spellcheck="false" placeholder="Reading…"></textarea>
+  <div class="row"><button class="mini" id="ocrcopy">Copy</button><button class="mini" id="ocrsave">Save .txt…</button><button class="mini" id="ocragain" title="Read the canvas again (after cropping, for example)">Read again</button></div>
+  <div class="note">Read by Windows' own text recognition, entirely on this PC. Crop first to read just one part.</div>
 </div>
 
 <div id="top">
@@ -568,8 +588,8 @@ $("custom").oninput = e => setColor(e.target.value);
 $("size").oninput = e => setSize(+e.target.value);
 
 let openPop = null, openBtn = null;
-function togglePop(p, btn) { if (openPop === p) { closePops(); return; } closePops(); p.style.display = "block"; openPop = p; openBtn = btn; positionPop(); btn.classList.add("on"); if (p === rotpop) drawDial(); }
-function closePops() { for (const p of [pop, rotpop]) p.style.display = "none"; if (openBtn) openBtn.classList.remove("on"); openPop = openBtn = null; }
+function togglePop(p, btn) { if (openPop === p) { closePops(); return; } closePops(); p.style.display = "block"; openPop = p; openBtn = btn; positionPop(); btn.classList.add("on"); if (p === rotpop) drawDial(); if (p === ocrpop && !ocrDone) readText(); }
+function closePops() { for (const p of [pop, rotpop, ocrpop]) p.style.display = "none"; if (openBtn) openBtn.classList.remove("on"); openPop = openBtn = null; }
 /** Beside the toolbar when there's room, otherwise below / left / above it, lined up with the button. */
 function positionPop() {
   if (!openPop) return;
@@ -583,6 +603,39 @@ function positionPop() {
   openPop.style.left = x + "px"; openPop.style.top = y + "px";
 }
 $("colorbtn").onclick = e => { e.stopPropagation(); togglePop(pop, $("colorbtn")); };
+$("ocrbtn").onclick = e => { e.stopPropagation(); togglePop(ocrpop, $("ocrbtn")); };
+
+// ------------------------------------------------------------ read text (OCR, done by Windows on this PC)
+const ocrpop = $("ocrpop"), ocrtext = $("ocrtext"), ocrstatus = $("ocrstatus");
+let ocrDone = false, ocrBusy = false;
+async function readText() {
+  if (!base || ocrBusy) return;
+  finishText();
+  ocrBusy = true; ocrDone = true;
+  ocrtext.value = ""; ocrtext.placeholder = "Reading…"; ocrstatus.textContent = "reading…";
+  try {
+    const res = await fetch("/ocr/" + TOKEN, { method: "POST", body: await pngBlob() });
+    const j = await res.json();
+    if (j.error) { ocrtext.placeholder = j.error; ocrstatus.textContent = "couldn't read"; return; }
+    ocrtext.value = j.text;
+    ocrtext.placeholder = "No text found.";
+    ocrstatus.textContent = `${j.lines} line${j.lines === 1 ? "" : "s"} · ${j.lang}`;
+  } catch (e) { ocrtext.placeholder = "Couldn't read text: " + e.message + ". Is Grim's Ghost still running?"; ocrstatus.textContent = ""; }
+  finally { ocrBusy = false; }
+}
+$("ocragain").onclick = readText;
+$("ocrcopy").onclick = async () => {
+  try { await navigator.clipboard.writeText(ocrtext.value); toast("Text copied"); } catch (e) { toast("Copy failed: " + e.message); }
+};
+$("ocrsave").onclick = async () => {
+  if (!ocrtext.value.trim()) { toast("There's no text to save yet."); return; }
+  try {
+    const res = await fetch("/savetext/" + TOKEN, { method: "POST", body: new Blob([ocrtext.value], { type: "text/plain;charset=utf-8" }) });
+    const j = await res.json();
+    if (!j.cancelled) toast("Saved as " + j.name, true);
+  } catch (e) { toast("Couldn't save: " + e.message); }
+};
+ocrtext.addEventListener("keydown", e => e.stopPropagation());
 $("rotbtn").onclick = e => { e.stopPropagation(); togglePop(rotpop, $("rotbtn")); };
 document.addEventListener("pointerdown", e => {
   if (openPop && !openPop.contains(e.target) && !openBtn.contains(e.target)) closePops();
@@ -601,7 +654,7 @@ function applyLayout() {
   tools.style.left = x + "px"; tools.style.top = y + "px";
   positionPop();
 }
-function saveLayout() { try { localStorage.setItem("gyzer.toolbar", JSON.stringify(layout)); } catch (_) {} }
+function saveLayout() { try { localStorage.setItem("ghost.toolbar", JSON.stringify(layout)); } catch (_) {} }
 /** Pick the column count that gives the biggest buttons for a given box: wide = a row, tall = a column, square = a grid. */
 function layoutFor(w, h) {
   const n = tbgrid.children.length, gap = 2, padX = 12, padY = 22;
@@ -635,8 +688,31 @@ $("resize").addEventListener("pointerdown", e => {
   const up = () => { r.removeEventListener("pointermove", mv); r.removeEventListener("pointerup", up); saveLayout(); };
   r.addEventListener("pointermove", mv); r.addEventListener("pointerup", up);
 });
-try { const l = JSON.parse(localStorage.getItem("gyzer.toolbar") || "null"); if (l) layout = Object.assign(layout, l); } catch (_) {}
-addEventListener("resize", applyLayout);
+try { const l = JSON.parse(localStorage.getItem("ghost.toolbar") || "null"); if (l) layout = Object.assign(layout, l); } catch (_) {}
+addEventListener("resize", () => { applyLayout(); applyCollapsed(); });
+
+// Tuck into the side wall: a slim tab on the nearest edge; click it to bring the toolbar back where it was.
+const tab = $("tab");
+function applyCollapsed() {
+  const c = !!layout.collapsed;
+  tools.style.display = c ? "none" : "";
+  tab.style.display = c ? "flex" : "none";
+  if (!c) return;
+  const right = layout.side === "right";
+  tab.classList.toggle("right", right);
+  tab.textContent = right ? "‹" : "›";
+  tab.style.left = right ? "" : "0px"; tab.style.right = right ? "0px" : "";
+  tab.style.top = Math.max(4, Math.min(innerHeight - 68, layout.y + 20)) + "px";
+}
+$("collapse").addEventListener("pointerdown", e => e.stopPropagation());   // not a drag of the grip
+$("collapse").onclick = e => {
+  e.stopPropagation();
+  closePops();
+  const r = tools.getBoundingClientRect();
+  layout.side = r.left + r.width / 2 > innerWidth / 2 ? "right" : "left";
+  layout.collapsed = true; applyCollapsed(); saveLayout();
+};
+tab.onclick = () => { layout.collapsed = false; applyCollapsed(); applyLayout(); saveLayout(); };
 
 // ------------------------------------------------------------ save as / copy / output
 const pngBlob = () => new Promise(r => flatten().toBlob(r, "image/png"));
@@ -645,14 +721,15 @@ async function saveAs() {
   if (!base || saving) return;
   finishText();
   if (cropping()) cropDone();
-  saving = true; $("save").disabled = true; $("save").textContent = "Choose where…";
+  saving = true; $("save").disabled = true; $("save").textContent = "Opening save window…";
+  const slow = setTimeout(() => { if (saving) toast("The save window is open. If you can't see it, check your taskbar."); }, 2500);
   try {
     const res = await fetch("/saveas/" + TOKEN, { method: "POST", body: await pngBlob() });
     if (!res.ok) throw new Error("error " + res.status);
     const j = await res.json();
     if (!j.cancelled) toast("Saved as " + j.name, true);
-  } catch (e) { toast("Couldn't save: " + e.message + ". Is Grim's Gyzer still running?"); }
-  finally { saving = false; $("save").disabled = false; $("save").textContent = "Save as…"; }
+  } catch (e) { toast("Couldn't save: " + e.message + ". Is Grim's Ghost still running?"); }
+  finally { clearTimeout(slow); saving = false; $("save").disabled = false; $("save").textContent = "Save as…"; }
 }
 async function copy() {
   if (!base) return;
@@ -660,7 +737,7 @@ async function copy() {
   try { await navigator.clipboard.write([new ClipboardItem({ "image/png": await pngBlob() })]); toast("Copied to clipboard"); }
   catch (e) { toast("Copy failed: " + e.message); }
 }
-const reveal = () => fetch("/reveal/" + TOKEN, { method: "POST" }).catch(() => toast("Couldn't open the folder. Is Grim's Gyzer still running?"));
+const reveal = () => fetch("/reveal/" + TOKEN, { method: "POST" }).catch(() => toast("Couldn't open the folder. Is Grim's Ghost still running?"));
 $("save").onclick = saveAs;
 $("copy").onclick = copy;
 $("out").onclick = reveal;
@@ -695,6 +772,7 @@ document.addEventListener("keydown", e => {
   else if (k === "t") setTool("text");
   else if (k === "c") setTool("crop");
   else if (k === "r") togglePop(rotpop, $("rotbtn"));
+  else if (k === "o") togglePop(ocrpop, $("ocrbtn"));
   else if (k === "i") fileInput.click();
   else if (k === "[") setSize(size - 1);
   else if (k === "]") setSize(size + 1);
@@ -702,7 +780,7 @@ document.addEventListener("keydown", e => {
 });
 document.addEventListener("keyup", e => { if (e.key === " ") { spaceDown = false; setTool(tool, true); } });
 
-setColor(color); setSize(size); tool = "select"; setTool("select"); syncUndo(); resize(); applyLayout(); drawDial();
+setColor(color); setSize(size); tool = "select"; setTool("select"); syncUndo(); resize(); applyLayout(); applyCollapsed(); drawDial();
 </script>
 </body>
 </html>

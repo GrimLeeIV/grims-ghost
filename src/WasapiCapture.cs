@@ -7,7 +7,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-namespace GrimsGyzer
+namespace GrimsGhost
 {
     // ======================================================================== audio sources
 
@@ -338,7 +338,7 @@ namespace GrimsGyzer
                 bool loopbackLike = false, eventMode = false, suppressOwnSounds = false;
                 bool app = src.Kind == AudioKind.App || src.Kind == AudioKind.AllExceptApp;
 
-                // Default "system sound": capture everything except Grim's Gyzer itself (Windows 10 2004+),
+                // Default "system sound": capture everything except Grim's Ghost itself (Windows 10 2004+),
                 // so its own shutter/chime sounds never end up in recordings or replays.
                 if (src.Kind == AudioKind.Output && string.IsNullOrEmpty(src.Device) && CoreAudio.AppCaptureSupported)
                 {

@@ -4,23 +4,24 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net48</TargetFramework>
     <LangVersion>latest</LangVersion>
-    <AssemblyName>GrimsGyzer</AssemblyName>
-    <RootNamespace>GrimsGyzer</RootNamespace>
+    <AssemblyName>GrimsGhost</AssemblyName>
+    <RootNamespace>GrimsGhost</RootNamespace>
     <ApplicationManifest>app.manifest</ApplicationManifest>
     <ApplicationIcon Condition="Exists('app.ico')">app.ico</ApplicationIcon>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
     <DebugType>none</DebugType>
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
-    <Product>Grim's Gyzer</Product>
-    <AssemblyTitle>Grim's Gyzer</AssemblyTitle>
-    <Version>1.4.0</Version>
+    <Product>Grim's Ghost</Product>
+    <AssemblyTitle>Grim's Ghost</AssemblyTitle>
+    <Version>1.5.0</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
 
   <ItemGroup>
     <Compile Include="src\**\*.cs" />
-    <EmbeddedResource Include="src\editor.html" LogicalName="GrimsGyzer.editor.html" />
+    <EmbeddedResource Include="src\editor.html" LogicalName="GrimsGhost.editor.html" />
   </ItemGroup>
 
   <!-- Optional runtime dependency: ffmpeg (video + instant replay). Copied next to the exe for local runs if present in deps\. -->
@@ -38,6 +39,11 @@
   <ItemGroup>
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Drawing" />
+  </ItemGroup>
+
+  <!-- Build-time API definitions for Windows' built-in, offline OCR (Windows.Media.Ocr). Nothing extra ships. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Windows.SDK.Contracts" Version="10.0.19041.1" />
   </ItemGroup>
 
 </Project>

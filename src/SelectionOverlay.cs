@@ -6,7 +6,7 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Windows.Forms;
 
-namespace GrimsGyzer
+namespace GrimsGhost
 {
     /// <summary>
     /// Base for the small overlay windows: always on top, never focused, hidden from screen capture.

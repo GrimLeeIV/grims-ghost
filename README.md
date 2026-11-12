@@ -1,4 +1,4 @@
-# Grim's Gyzer
+# Grim's Ghost
 
 A tiny, fully local screenshot, screen-recording and instant-replay tray app for Windows 10/11. Captures never leave your PC: the app has no upload code, and its built-in editor runs on a private loopback-only server.
 
@@ -6,7 +6,7 @@ Free and open source (MIT). Made by GrimLeeIV with Claude.
 
 ## Install
 
-Download **GrimsGyzerSetup.exe** (≈230 KB) from the [Releases](../../releases) page and run it. Pick the features you want, and the installer ticks the dependencies each one needs:
+Download **GrimsGhostSetup.exe** (≈240 KB) from the [Releases](../../releases) page and run it. Pick the features you want, and the installer ticks the dependencies each one needs:
 
 | Feature level | Needs | Download |
 |---|---|---|
@@ -14,12 +14,12 @@ Download **GrimsGyzerSetup.exe** (≈230 KB) from the [Releases](../../releases)
 | + Video recording | ffmpeg | ≈110 MB, or copied if it's already on the PC |
 | + Instant replay | ffmpeg + a GPU video encoder (NVIDIA / AMD / Intel) | same ffmpeg |
 
-ffmpeg is taken from an existing install (winget / PATH) when there is one. Otherwise it's downloaded from gyan.dev and **checked against its published SHA-256 checksum** before use. The installer needs no admin rights. It installs to `%LOCALAPPDATA%\Programs\Grim's Gyzer`, adds a Start Menu entry (search "Gyzer") and an optional desktop shortcut, and registers in *Apps & features* for uninstalling. To add or remove features later, use Settings → Output & general → *Add or remove features…*, or *Modify* in Apps & features.
+ffmpeg is taken from an existing install (winget / PATH) when there is one. Otherwise it's downloaded from gyan.dev and **checked against its published SHA-256 checksum** before use. The installer needs no admin rights. It installs to `%LOCALAPPDATA%\Programs\Grim's Ghost`, adds a Start Menu entry (search "Ghost") and an optional desktop shortcut, and registers in *Apps & features* for uninstalling. To add or remove features later, use Settings → Output & general → *Add or remove features…*, or *Modify* in Apps & features.
 
 Silent install for IT:
 
 ```
-GrimsGyzerSetup.exe --quiet [--screenshots-only] [--no-desktop] [--startup] [--no-launch] [--dir "C:\path"]
+GrimsGhostSetup.exe --quiet [--screenshots-only] [--no-desktop] [--startup] [--no-launch] [--dir "C:\path"]
 ```
 
 ## Use
@@ -46,10 +46,13 @@ Selecting an area happens live: the screen keeps playing underneath and your app
 
 Turn on *Open in my browser after saving* (Settings → Output & general). Screenshots then open in a minimal editor in your default browser:
 
-- **Toolbar:** select/move, brush, text, image overlays, crop and rotate, plus a pop-out colour and size picker and undo/redo. Drag the toolbar by its dots, and drag its corner handle to reshape it into a column, a row or a grid. Its buttons grow and shrink to fit, and the layout is remembered.
-- **Rotate:** a fine slider (±45°) with 0.1° nudges, mouse-wheel steps and ±90° turns. Drawings rotate with the image, and corners outside the image are saved transparent.
+- **Toolbar:** select/move, brush, text, image overlays, crop, rotate and read text, plus a pop-out colour and size picker and undo/redo. Drag the toolbar by its dots, and drag its corner handle to reshape it into a column, a row or a grid. **‹** tucks it into the nearest side wall as a slim tab; click the tab to bring it back. The layout is remembered.
+- **The canvas keeps your media's size and shape:** rotating turns the picture inside it, and uncovered corners are saved transparent.
+- **Crop:** drag the canvas edges or corners (Shift keeps the shape), drag inside to move the box, or drag outside to draw a new one. Enter or Done applies it, and Reset goes back to the original. Cropping never throws pixels away, so you can always widen it again.
+- **Rotate:** a dial you drag round and round with no end stops. Drag out past its edge for finer control, Shift snaps to 15°, and scrolling turns 1° (Shift 0.1°). The ±90° buttons turn the canvas too.
+- **Read text (O):** pulls the text out of the image using Windows' own offline text recognition. You can copy it or save it as a .txt.
 - **Moving around:** right-drag (or middle-drag, or Space + drag) to move around, scroll to zoom, double-click to fit.
-- **Save, Copy, Output:** Save writes a `… (edited).png` copy next to the original, Copy puts the image on the clipboard, and Output opens the folder with your latest save selected.
+- **Save as…, Copy, Output:** Save as… opens the normal Windows save window (PNG or JPG), starting in the image's folder or wherever you last saved. Copy puts the image on the clipboard, and Output opens the folder with your latest save selected.
 - You can also paste or drop an image onto the page to add it as an overlay.
 
 Videos open in the browser's own player.
@@ -97,14 +100,14 @@ Soft sounds confirm each capture, with no pop-ups:
 - **Screenshot:** two soft wooden taps.
 - **Recording and instant replay:** a warm rising chime when they start, and a falling chime when the file is saved.
 
-Long replay saves also show "Saving replay…" in the tray tooltip and a notification. You can turn them off or change their volume in Settings → Output & general, and preview them there with ▶. They're generated in code, so the app has no sound files. They also never end up in your clips: on Windows 10 2004 and newer, "system sound" records everything except Grim's Gyzer itself.
+Long replay saves also show "Saving replay…" in the tray tooltip and a notification. You can turn them off or change their volume in Settings → Output & general, and preview them there with ▶. They're generated in code, so the app has no sound files. They also never end up in your clips: on Windows 10 2004 and newer, "system sound" records everything except Grim's Ghost itself.
 
 ## Output
 
 ```
-%USERPROFILE%\Grim's Gyzer\Images\2026-11-05\Screenshot 2026-11-05 14-32-07.png
-%USERPROFILE%\Grim's Gyzer\Videos\2026-11-05\Recording 2026-11-05 14-32-07.mp4
-%USERPROFILE%\Grim's Gyzer\Videos\2026-11-05\Replay 2026-11-05 14-40-11.mp4
+%USERPROFILE%\Grim's Ghost\Images\2026-11-05\Screenshot 2026-11-05 14-32-07.png
+%USERPROFILE%\Grim's Ghost\Videos\2026-11-05\Recording 2026-11-05 14-32-07.mp4
+%USERPROFILE%\Grim's Ghost\Videos\2026-11-05\Replay 2026-11-05 14-40-11.mp4
 ```
 
 The default location is deliberately *not* Pictures/Videos, because those folders are often OneDrive-synced.
@@ -112,14 +115,14 @@ The default location is deliberately *not* Pictures/Videos, because those folder
 ## Build
 
 ```
-powershell -ExecutionPolicy Bypass -File .\build.ps1             # dist\GrimsGyzerSetup.exe
+powershell -ExecutionPolicy Bypass -File .\build.ps1             # dist\GrimsGhostSetup.exe
 powershell -ExecutionPolicy Bypass -File .\build.ps1 -Portable   # also a no-install zip with ffmpeg inside
 ```
 
-Settings and the log live in `%APPDATA%\GrimsGyzer\`.
+Settings and the log live in `%APPDATA%\GrimsGhost\`.
 
 ## License
 
-Grim's Gyzer is MIT-licensed (see [LICENSE](LICENSE)). Use it, change it and share it freely.
+Grim's Ghost is MIT-licensed (see [LICENSE](LICENSE)). Use it, change it and share it freely.
 
 *ffmpeg is GPL-licensed. Using it inside your company is fine. If you share a build that bundles it (the portable zip) outside the company, keep `ffmpeg-LICENSE.txt` with it.*

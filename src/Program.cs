@@ -7,7 +7,7 @@ using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
 
-namespace GrimsGyzer
+namespace GrimsGhost
 {
     static class Program
     {
@@ -25,15 +25,15 @@ namespace GrimsGyzer
             bool startup = args.Length > 0 && args[0] == "--startup";
             if (args.Length > 0 && args[0].StartsWith("--") && !startup) return DevCommand(args);
 
-            using (var single = new Mutex(true, "GrimsGyzer.SingleInstance", out bool first))
+            using (var single = new Mutex(true, "GrimsGhost.SingleInstance", out bool first))
             {
                 if (!first)
                 {
                     // Already running: launching again just pops the tray menu.
-                    try { EventWaitHandle.OpenExisting("GrimsGyzer.ShowMenu").Set(); } catch { }
+                    try { EventWaitHandle.OpenExisting("GrimsGhost.ShowMenu").Set(); } catch { }
                     return 0;
                 }
-                using (var showMenu = new EventWaitHandle(false, EventResetMode.AutoReset, "GrimsGyzer.ShowMenu"))
+                using (var showMenu = new EventWaitHandle(false, EventResetMode.AutoReset, "GrimsGhost.ShowMenu"))
                     Application.Run(new TrayApp(showMenu, silentStart: startup));
             }
             return 0;

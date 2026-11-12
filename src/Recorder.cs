@@ -7,7 +7,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 
-namespace GrimsGyzer
+namespace GrimsGhost
 {
     /// <summary>
     /// Records a screen region with ffmpeg (Desktop Duplication when possible, so DirectX / Unreal windows capture
@@ -44,7 +44,7 @@ namespace GrimsGyzer
 
         public void Start()
         {
-            tmp = Path.Combine(Path.GetTempPath(), "GrimsGyzer", Guid.NewGuid().ToString("N"));
+            tmp = Path.Combine(Path.GetTempPath(), "GrimsGhost", Guid.NewGuid().ToString("N"));
             Directory.CreateDirectory(tmp);
             vid = Path.Combine(tmp, "video.mkv");
 

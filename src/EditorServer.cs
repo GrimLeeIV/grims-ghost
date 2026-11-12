@@ -10,7 +10,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Threading;
 
-namespace GrimsGyzer
+namespace GrimsGhost
 {
     /// <summary>
     /// Tiny private web server for the in-browser image editor.
@@ -38,13 +38,14 @@ namespace GrimsGyzer
         static void EnsureStarted()
         {
             if (listener != null) return;
-            using (var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("GrimsGyzer.editor.html"))
+            using (var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("GrimsGhost.editor.html"))
             using (var r = new StreamReader(s, Encoding.UTF8)) html = r.ReadToEnd();
             // A stable port keeps the editor's remembered toolbar position; fall back to any free port.
             try { listener = new TcpListener(IPAddress.Loopback, 47851); listener.Start(); }
             catch (SocketException) { listener = new TcpListener(IPAddress.Loopback, 0); listener.Start(); }
             port = ((IPEndPoint)listener.LocalEndpoint).Port;
             new Thread(AcceptLoop) { IsBackground = true, Name = "editor-server" }.Start();
+            WarmUpSaveDialog();
             Log.Write("editor server on 127.0.0.1:" + port);
         }
 
@@ -106,7 +107,8 @@ namespace GrimsGyzer
                 while (read < length) { int n = ns.Read(body, read, (int)Math.Min(65536, length - read)); if (n <= 0) break; read += n; }
                 if (read != length || body.Length < 8 || body[0] != 0x89 || body[1] != (byte)'P') { Send(ns, 400, "text/plain", Encoding.UTF8.GetBytes("bad image")); return; }
 
-                string outPath = AskSavePath(file);
+                string outPath = AskSavePath(file, "Save edited image as", Path.GetFileName(EditedPath(file)),
+                                             "PNG image (*.png)|*.png|JPEG image (*.jpg)|*.jpg", "png");
                 if (outPath == null) { Send(ns, 200, "application/json", Encoding.UTF8.GetBytes("{\"cancelled\":true}")); return; }
                 if (outPath.EndsWith(".jpg", StringComparison.OrdinalIgnoreCase) || outPath.EndsWith(".jpeg", StringComparison.OrdinalIgnoreCase))
                     SaveJpeg(body, outPath);
@@ -115,6 +117,31 @@ namespace GrimsGyzer
                 lastSaved[token] = outPath;
                 Log.Write("editor saved " + outPath);
                 Send(ns, 200, "application/json", Encoding.UTF8.GetBytes("{\"name\":\"" + Path.GetFileName(outPath).Replace("\\", "\\\\").Replace("\"", "\\\"") + "\"}"));
+            }
+            else if (method == "POST" && parts[0] == "ocr")
+            {
+                var body = ReadBody(ns, length, 400L * 1024 * 1024);
+                if (body == null || body.Length < 8 || body[0] != 0x89) { Send(ns, 400, "text/plain", Encoding.UTF8.GetBytes("bad image")); return; }
+                string json;
+                try
+                {
+                    var r = Ocr.ReadAsync(body).GetAwaiter().GetResult();
+                    json = "{\"text\":" + Json(r.Text) + ",\"lines\":" + r.Lines + ",\"lang\":" + Json(r.Language) + "}";
+                    Log.Write($"ocr: {r.Lines} lines ({r.Language})");
+                }
+                catch (Exception ex) { json = "{\"error\":" + Json(ex.Message) + "}"; Log.Write("ocr: " + ex.Message); }
+                Send(ns, 200, "application/json", Encoding.UTF8.GetBytes(json));
+            }
+            else if (method == "POST" && parts[0] == "savetext")
+            {
+                var body = ReadBody(ns, length, 20L * 1024 * 1024);
+                if (body == null) { Send(ns, 400, "text/plain", Encoding.UTF8.GetBytes("bad text")); return; }
+                string outPath = AskSavePath(file, "Save text as", Path.GetFileNameWithoutExtension(file) + ".txt", "Text file (*.txt)|*.txt", "txt");
+                if (outPath == null) { Send(ns, 200, "application/json", Encoding.UTF8.GetBytes("{\"cancelled\":true}")); return; }
+                File.WriteAllText(outPath, Encoding.UTF8.GetString(body), new UTF8Encoding(false));
+                lastSaved[token] = outPath;
+                Log.Write("editor saved text " + outPath);
+                Send(ns, 200, "application/json", Encoding.UTF8.GetBytes("{\"name\":" + Json(Path.GetFileName(outPath)) + "}"));
             }
             else if (method == "POST" && parts[0] == "reveal")
             {
@@ -125,16 +152,57 @@ namespace GrimsGyzer
             else Send(ns, 405, "text/plain", Encoding.UTF8.GetBytes("method not allowed"));
         }
 
+        /// <summary>The first Windows save window an app opens can take seconds while Explorer's parts load; load them early.</summary>
+        static void WarmUpSaveDialog()
+        {
+            var t = new Thread(() =>
+            {
+                try
+                {
+                    var type = Type.GetTypeFromCLSID(new Guid("C0B4E2F3-BA21-4773-8DBA-335EC946EB8B")); // FileSaveDialog
+                    var o = Activator.CreateInstance(type);
+                    System.Runtime.InteropServices.Marshal.ReleaseComObject(o);
+                }
+                catch (Exception ex) { Log.Write("save dialog warm-up: " + ex.Message); }
+            }) { IsBackground = true, Name = "save-dialog-warmup" };
+            t.SetApartmentState(ApartmentState.STA);
+            t.Start();
+        }
+
         static string LastFolderFile => Path.Combine(Settings.AppDataDir, "editor-last-folder.txt");
 
         /// <summary>
         /// Native Windows "Save as" window, opened in front of the browser. Starts in the folder you last saved to,
         /// or the image's own day folder. Returns null if cancelled.
         /// </summary>
-        static string AskSavePath(string original)
+        static byte[] ReadBody(Stream ns, long length, long max)
         {
-            string test = Environment.GetEnvironmentVariable("GYZER_TEST_SAVEAS"); // dev self-test only
-            if (!string.IsNullOrEmpty(test)) return test;
+            if (length <= 0 || length > max) return null;
+            var body = new byte[length];
+            int read = 0;
+            while (read < length) { int n = ns.Read(body, read, (int)Math.Min(65536, length - read)); if (n <= 0) break; read += n; }
+            return read == length ? body : null;
+        }
+
+        static string Json(string s)
+        {
+            var sb = new StringBuilder("\"");
+            foreach (char c in s ?? "")
+            {
+                if (c == '"' || c == '\\') sb.Append('\\').Append(c);
+                else if (c == '\n') sb.Append("\\n");
+                else if (c == '\r') sb.Append("\\r");
+                else if (c == '\t') sb.Append("\\t");
+                else if (c < 0x20) sb.Append("\\u").Append(((int)c).ToString("x4"));
+                else sb.Append(c);
+            }
+            return sb.Append('"').ToString();
+        }
+
+        static string AskSavePath(string original, string title, string fileName, string filter, string ext)
+        {
+            string test = Environment.GetEnvironmentVariable("GHOST_TEST_SAVEAS"); // dev self-test only
+            if (!string.IsNullOrEmpty(test)) return Path.ChangeExtension(test, ext);
 
             string result = null;
             var t = new Thread(() =>
@@ -151,16 +219,29 @@ namespace GrimsGyzer
                 })
                 using (var d = new System.Windows.Forms.SaveFileDialog
                 {
-                    Title = "Save edited image as",
+                    Title = title,
                     InitialDirectory = initial,
-                    FileName = Path.GetFileName(EditedPath(original)),
-                    Filter = "PNG image (*.png)|*.png|JPEG image (*.jpg)|*.jpg",
-                    DefaultExt = "png", AddExtension = true, OverwritePrompt = true,
+                    FileName = fileName,
+                    Filter = filter,
+                    DefaultExt = ext, AddExtension = true, OverwritePrompt = true,
                 })
                 {
                     owner.Show();
-                    Native.SetForegroundWindow(owner.Handle);
-                    if (d.ShowDialog(owner) == System.Windows.Forms.DialogResult.OK)
+                    Native.ForceForeground(owner.Handle);
+                    // Windows won't let a background app jump in front of the browser on its own,
+                    // so once the save window exists, pull it to the front.
+                    var sw = System.Diagnostics.Stopwatch.StartNew();
+                    var poll = new System.Windows.Forms.Timer { Interval = 50 };
+                    poll.Tick += (a, b) =>
+                    {
+                        IntPtr h = Native.FindWindow("#32770", d.Title);
+                        if (h != IntPtr.Zero) { Native.ForceForeground(h); poll.Stop(); }
+                        else if (sw.ElapsedMilliseconds > 15000) poll.Stop();
+                    };
+                    poll.Start();
+                    bool ok = d.ShowDialog(owner) == System.Windows.Forms.DialogResult.OK;
+                    poll.Dispose();
+                    if (ok)
                     {
                         result = d.FileName;
                         try { File.WriteAllText(LastFolderFile, Path.GetDirectoryName(result)); } catch { }

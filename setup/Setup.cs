@@ -12,12 +12,12 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
-namespace GrimsGyzerSetup
+namespace GrimsGhostSetup
 {
     static class Program
     {
-        public const string AppName = "Grim's Gyzer";
-        public const string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\GrimsGyzer";
+        public const string AppName = "Grim's Ghost";
+        public const string UninstallKey = @"Software\Microsoft\Windows\CurrentVersion\Uninstall\GrimsGhost";
 
         [STAThread]
         static void Main(string[] args)
@@ -30,7 +30,7 @@ namespace GrimsGyzerSetup
         }
 
         /// <summary>
-        /// Unattended install for IT: GrimsGyzerSetup.exe --quiet [--screenshots-only] [--no-desktop] [--startup] [--no-launch] [--dir "path"]
+        /// Unattended install for IT: GrimsGhostSetup.exe --quiet [--screenshots-only] [--no-desktop] [--startup] [--no-launch] [--dir "path"]
         /// </summary>
         static int Quiet(string[] args)
         {
@@ -41,12 +41,12 @@ namespace GrimsGyzerSetup
                     : InstalledDir() ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", AppName);
                 using (var f = new SetupForm(false))
                     f.Install(dir, !args.Contains("--screenshots-only"), !args.Contains("--no-desktop"), args.Contains("--startup"));
-                if (!args.Contains("--no-launch")) Process.Start(Path.Combine(dir, "GrimsGyzer.exe"));
+                if (!args.Contains("--no-launch")) Process.Start(Path.Combine(dir, "GrimsGhost.exe"));
                 return 0;
             }
             catch (Exception ex)
             {
-                try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "GrimsGyzerSetup.log"), DateTime.Now + " " + ex + Environment.NewLine); } catch { }
+                try { File.AppendAllText(Path.Combine(Path.GetTempPath(), "GrimsGhostSetup.log"), DateTime.Now + " " + ex + Environment.NewLine); } catch { }
                 return 1;
             }
         }
@@ -59,8 +59,37 @@ namespace GrimsGyzerSetup
 
         public static void StopApp()
         {
-            foreach (var p in Process.GetProcessesByName("GrimsGyzer"))
-                try { p.Kill(); p.WaitForExit(3000); } catch { }
+            foreach (var name in new[] { "GrimsGhost", OldName })
+                foreach (var p in Process.GetProcessesByName(name))
+                    try { p.Kill(); p.WaitForExit(3000); } catch { }
+        }
+
+        // ---- upgrading from the app's earlier name, "Grim's Gyzer" ----
+        public const string OldName = "GrimsGyzer";
+        const string OldDisplay = "Grim's Gyzer";
+        const string RunKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
+
+        public static string OldInstallDir()
+        {
+            using (var k = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\" + OldName))
+                return k?.GetValue("InstallLocation") as string;
+        }
+        public static bool OldStartupOn() { using (var k = Registry.CurrentUser.OpenSubKey(RunKey)) return k?.GetValue(OldName) != null; }
+        public static bool OldDesktopIcon() => File.Exists(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), OldDisplay + ".lnk"));
+
+        /// <summary>Removes the old-named install (shortcuts, startup entry, uninstall entry, program folder). Captures are untouched.</summary>
+        public static void RemoveOldVersion()
+        {
+            foreach (var lnk in new[] {
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Programs), OldDisplay + ".lnk"),
+                Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory), OldDisplay + ".lnk") })
+                try { File.Delete(lnk); } catch { }
+            try { using (var k = Registry.CurrentUser.OpenSubKey(RunKey, true)) k?.DeleteValue(OldName, false); } catch { }
+            string dir = OldInstallDir();
+            try { Registry.CurrentUser.DeleteSubKeyTree(@"Software\Microsoft\Windows\CurrentVersion\Uninstall\" + OldName, false); } catch { }
+            if (dir != null && File.Exists(Path.Combine(dir, OldName + ".exe")))
+                try { Directory.Delete(dir, true); } catch { }
+            try { Directory.Delete(Path.Combine(Path.GetTempPath(), OldName), true); } catch { }
         }
 
         public static void Shortcut(string lnk, string target, string args = "")
@@ -146,7 +175,7 @@ namespace GrimsGyzerSetup
         public SetupForm(bool modify)
         {
             this.modify = modify;
-            Text = modify ? "Grim's Gyzer: add or remove features" : "Install Grim's Gyzer";
+            Text = modify ? "Grim's Ghost: add or remove features" : "Install Grim's Ghost";
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = MinimizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
@@ -157,7 +186,7 @@ namespace GrimsGyzerSetup
 
             string installed = Program.InstalledDir();
             string defaultDir = installed ?? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Programs", Program.AppName);
-            existingFfmpeg = Detect.ExistingFfmpeg(installed);
+            existingFfmpeg = Detect.ExistingFfmpeg(installed) ?? Detect.ExistingFfmpeg(Program.OldInstallDir());
             gpu = Detect.Gpu();
             bool hadFfmpeg = installed != null && File.Exists(Path.Combine(installed, "ffmpeg.exe"));
 
@@ -195,8 +224,8 @@ namespace GrimsGyzerSetup
             fl.Controls.Add(folder); fl.Controls.Add(browse);
             Add(fl);
             oDesktop = C("Desktop shortcut (one-click launcher)", !modify || File.Exists(Program.DesktopLink)); Add(oDesktop);
-            oStartup = C("Start with Windows", modify && Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run")?.GetValue("GrimsGyzer") != null); Add(oStartup);
-            oLaunch = C("Launch Grim's Gyzer when done", true); Add(oLaunch);
+            oStartup = C("Start with Windows", (modify && Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run")?.GetValue("GrimsGhost") != null) || Program.OldStartupOn()); Add(oStartup);
+            oLaunch = C("Launch Grim's Ghost when done", true); Add(oLaunch);
 
             bar = new ProgressBar { Width = Px(440), Height = Px(14), Visible = false, Margin = new Padding(Px(6), Px(12), 0, 0) };
             Add(bar);
@@ -250,8 +279,8 @@ namespace GrimsGyzerSetup
             try
             {
                 await Task.Run(() => Install(dir, wantFfmpeg, desktop, startup));
-                Status("Done. Grim's Gyzer is installed: search \"Gyzer\" in the Start menu any time.", 100);
-                if (launch) Process.Start(Path.Combine(dir, "GrimsGyzer.exe"));
+                Status("Done. Grim's Ghost is installed: search \"Ghost\" in the Start menu any time.", 100);
+                if (launch) Process.Start(Path.Combine(dir, "GrimsGhost.exe"));
                 cancel.Text = "Close"; cancel.Enabled = true; AcceptButton = cancel;
             }
             catch (Exception ex)
@@ -263,13 +292,15 @@ namespace GrimsGyzerSetup
 
         internal void Install(string dir, bool wantFfmpeg, bool desktop, bool startup)
         {
-            Status("Closing Grim's Gyzer if it's running…");
+            Status("Closing Grim's Ghost if it's running…");
+            bool upgrading = Program.OldInstallDir() != null;
+            if (upgrading) { startup |= Program.OldStartupOn(); desktop |= Program.OldDesktopIcon(); }
             Program.StopApp();
             Directory.CreateDirectory(dir);
 
             Status("Installing the app…");
-            string exe = Path.Combine(dir, "GrimsGyzer.exe");
-            using (var res = Assembly.GetExecutingAssembly().GetManifestResourceStream("payload.GrimsGyzer.exe"))
+            string exe = Path.Combine(dir, "GrimsGhost.exe");
+            using (var res = Assembly.GetExecutingAssembly().GetManifestResourceStream("payload.GrimsGhost.exe"))
             using (var f = File.Create(exe)) res.CopyTo(f);
             string setupCopy = Path.Combine(dir, "Setup.exe");
             if (!string.Equals(Path.GetFullPath(Application.ExecutablePath), Path.GetFullPath(setupCopy), StringComparison.OrdinalIgnoreCase))
@@ -293,6 +324,7 @@ namespace GrimsGyzerSetup
                     try { File.Delete(Path.Combine(dir, f)); } catch { }
             }
 
+            if (upgrading) { Status("Removing the old Grim's Gyzer install…"); Program.RemoveOldVersion(); }
             Status("Adding shortcuts…");
             Program.Shortcut(Program.StartMenuLink, exe);
             if (desktop) Program.Shortcut(Program.DesktopLink, exe);
@@ -300,8 +332,8 @@ namespace GrimsGyzerSetup
 
             using (var k = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run"))
             {
-                if (startup) k.SetValue("GrimsGyzer", "\"" + exe + "\" --startup");
-                else k.DeleteValue("GrimsGyzer", false);
+                if (startup) k.SetValue("GrimsGhost", "\"" + exe + "\" --startup");
+                else k.DeleteValue("GrimsGhost", false);
             }
 
             long kb = Directory.GetFiles(dir).Sum(f => new FileInfo(f).Length) / 1024;
@@ -322,19 +354,19 @@ namespace GrimsGyzerSetup
         void DownloadFfmpeg(string dir)
         {
             ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
-            string tmp = Path.Combine(Path.GetTempPath(), "GrimsGyzer-ffmpeg-" + Guid.NewGuid().ToString("N") + ".zip");
+            string tmp = Path.Combine(Path.GetTempPath(), "GrimsGhost-ffmpeg-" + Guid.NewGuid().ToString("N") + ".zip");
             try
             {
                 using (var wc = new WebClient())
                 {
-                    wc.Headers[HttpRequestHeader.UserAgent] = "GrimsGyzerSetup";
+                    wc.Headers[HttpRequestHeader.UserAgent] = "GrimsGhostSetup";
                     Status("Checking the ffmpeg download…");
                     string expected = wc.DownloadString(FfmpegZip + ".sha256").Trim().Split(' ', '\t', '\r', '\n')[0].ToLowerInvariant();
                     if (expected.Length != 64) throw new Exception("couldn't read the ffmpeg checksum");
 
                     // Plain streaming download: works on any thread (no event marshalling, so no deadlocks in --quiet mode).
                     var req = (HttpWebRequest)WebRequest.Create(FfmpegZip);
-                    req.UserAgent = "GrimsGyzerSetup";
+                    req.UserAgent = "GrimsGhostSetup";
                     req.AllowAutoRedirect = true;
                     using (var resp = req.GetResponse())
                     using (var net = resp.GetResponseStream())
@@ -383,20 +415,20 @@ namespace GrimsGyzerSetup
         public static void Run()
         {
             string dir = Program.InstalledDir() ?? AppDomain.CurrentDomain.BaseDirectory.TrimEnd('\\');
-            if (MessageBox.Show("Remove Grim's Gyzer from this PC?\n\nYour screenshots and recordings are kept.",
-                    "Uninstall Grim's Gyzer", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
+            if (MessageBox.Show("Remove Grim's Ghost from this PC?\n\nYour screenshots and recordings are kept.",
+                    "Uninstall Grim's Ghost", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes) return;
 
             Program.StopApp();
             foreach (var l in new[] { Program.StartMenuLink, Program.DesktopLink }) try { File.Delete(l); } catch { }
-            try { using (var k = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true)) k?.DeleteValue("GrimsGyzer", false); } catch { }
+            try { using (var k = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run", true)) k?.DeleteValue("GrimsGhost", false); } catch { }
             try { Registry.CurrentUser.DeleteSubKeyTree(Program.UninstallKey, false); } catch { }
-            try { Directory.Delete(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GrimsGyzer"), true); } catch { }
+            try { Directory.Delete(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GrimsGhost"), true); } catch { }
 
             // Remove the install folder once this process (which lives in it) has exited.
-            if (Directory.Exists(dir) && File.Exists(Path.Combine(dir, "GrimsGyzer.exe")))
+            if (Directory.Exists(dir) && File.Exists(Path.Combine(dir, "GrimsGhost.exe")))
                 Process.Start(new ProcessStartInfo("cmd.exe", $"/c timeout /t 2 /nobreak >nul & rmdir /s /q \"{dir}\"")
                 { CreateNoWindow = true, UseShellExecute = false });
-            MessageBox.Show("Grim's Gyzer was removed.", "Uninstall Grim's Gyzer");
+            MessageBox.Show("Grim's Ghost was removed.", "Uninstall Grim's Ghost");
         }
     }
 }

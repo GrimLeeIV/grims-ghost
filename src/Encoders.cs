@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.Text;
 
-namespace GrimsGyzer
+namespace GrimsGhost
 {
     /// <summary>Builds ffmpeg capture + encoder arguments for every codec / GPU vendor / rate-control combination.</summary>
     static class Encoders

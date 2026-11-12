@@ -4,20 +4,21 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net48</TargetFramework>
     <LangVersion>latest</LangVersion>
-    <AssemblyName>GrimsGyzerSetup</AssemblyName>
-    <RootNamespace>GrimsGyzerSetup</RootNamespace>
+    <AssemblyName>GrimsGhostSetup</AssemblyName>
+    <RootNamespace>GrimsGhostSetup</RootNamespace>
     <ApplicationManifest>..\app.manifest</ApplicationManifest>
     <ApplicationIcon>..\app.ico</ApplicationIcon>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
     <DebugType>none</DebugType>
-    <Product>Grim's Gyzer Setup</Product>
-    <Version>1.4.0</Version>
+    <Product>Grim's Ghost Setup</Product>
+    <Version>1.5.0</Version>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
   </PropertyGroup>
 
   <!-- The only payload is the app itself (~100 KB). Dependencies are fetched per feature at install time. -->
   <ItemGroup>
-    <EmbeddedResource Include="..\bin\Release\net48\GrimsGyzer.exe" LogicalName="payload.GrimsGyzer.exe" />
+    <EmbeddedResource Include="..\bin\Release\net48\GrimsGhost.exe" LogicalName="payload.GrimsGhost.exe" />
   </ItemGroup>
 
   <ItemGroup>

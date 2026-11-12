@@ -7,7 +7,7 @@ using System.Linq;
 using System.Windows.Forms;
 using Microsoft.Win32;
 
-namespace GrimsGyzer
+namespace GrimsGhost
 {
     enum ShotMode { Region, FullScreen }
     enum FullMode { AllDisplays, EachDisplay, FocusedDisplay }
@@ -95,16 +95,47 @@ namespace GrimsGyzer
 
         // Kept out of Pictures/Videos on purpose: those are often OneDrive-synced.
         public static string DefaultRoot =>
-            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Grim's Gyzer");
+            Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Grim's Ghost");
 
         public static string AppDataDir
         {
             get
             {
-                var d = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "GrimsGyzer");
-                Directory.CreateDirectory(d);
+                var appData = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+                var d = Path.Combine(appData, "GrimsGhost");
+                if (!Directory.Exists(d))
+                {
+                    Directory.CreateDirectory(d);
+                    // Upgrading from the app's earlier name: bring settings across once.
+                    var old = Path.Combine(appData, "GrimsGyzer");
+                    if (Directory.Exists(old))
+                        foreach (var f in new[] { "settings.ini", "editor-last-folder.txt" })
+                            try { if (File.Exists(Path.Combine(old, f))) File.Copy(Path.Combine(old, f), Path.Combine(d, f)); } catch { }
+                }
                 return d;
             }
+        }
+
+        /// <summary>
+        /// Upgrading from "Grim's Gyzer": if captures were in the old default folder, rename that folder to
+        /// "Grim's Ghost" (a plain rename, nothing is copied or deleted) and point the settings at it.
+        /// </summary>
+        void MigrateOldDefaultFolders()
+        {
+            string home = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);
+            string oldRoot = Path.Combine(home, "Grim's Gyzer"), newRoot = DefaultRoot;
+            bool usesOld(string p) => p.StartsWith(oldRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+            if (!usesOld(ImageFolder) && !usesOld(VideoFolder)) return;
+            try
+            {
+                if (Directory.Exists(oldRoot) && !Directory.Exists(newRoot)) Directory.Move(oldRoot, newRoot);
+                if (!Directory.Exists(newRoot)) return;
+                if (usesOld(ImageFolder)) ImageFolder = newRoot + ImageFolder.Substring(oldRoot.Length);
+                if (usesOld(VideoFolder)) VideoFolder = newRoot + VideoFolder.Substring(oldRoot.Length);
+                Save();
+                Log.Write("moved captures folder to " + newRoot);
+            }
+            catch (Exception ex) { Log.Write("couldn't rename old captures folder (kept using it): " + ex.Message); }
         }
         static string FilePath => Path.Combine(AppDataDir, "settings.ini");
 
@@ -179,9 +210,10 @@ namespace GrimsGyzer
             try
             {
                 using (var k = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run"))
-                    s.StartWithWindows = k?.GetValue("GrimsGyzer") != null; // the installer may have set it
+                    s.StartWithWindows = k?.GetValue("GrimsGhost") != null; // the installer may have set it
             }
             catch { }
+            s.MigrateOldDefaultFolders();
             return s;
         }
 
@@ -239,8 +271,8 @@ namespace GrimsGyzer
             {
                 using (var k = Registry.CurrentUser.CreateSubKey(@"Software\Microsoft\Windows\CurrentVersion\Run"))
                 {
-                    if (StartWithWindows) k.SetValue("GrimsGyzer", "\"" + Application.ExecutablePath + "\" --startup");
-                    else k.DeleteValue("GrimsGyzer", false);
+                    if (StartWithWindows) k.SetValue("GrimsGhost", "\"" + Application.ExecutablePath + "\" --startup");
+                    else k.DeleteValue("GrimsGhost", false);
                 }
             }
             catch (Exception ex) { Log.Write("startup key: " + ex.Message); }

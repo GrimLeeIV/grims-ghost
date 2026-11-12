@@ -8,7 +8,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace GrimsGyzer
+namespace GrimsGhost
 {
     sealed class SettingsForm : Form
     {
@@ -41,7 +41,7 @@ namespace GrimsGyzer
         public SettingsForm(Settings settings)
         {
             s = settings;
-            Text = "Grim's Gyzer — Settings";
+            Text = "Grim's Ghost — Settings";
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = MinimizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
@@ -191,7 +191,7 @@ namespace GrimsGyzer
             var setup = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Setup.exe");
             var features = new Button { Text = "Add or remove features…", AutoSize = true, Enabled = File.Exists(setup) };
             features.Click += (a, b) => { try { Process.Start(setup, "--modify"); } catch (Exception ex) { MessageBox.Show(this, ex.Message, Text); } };
-            pOut.Row("", features, Note(File.Exists(setup) ? "" : "available after installing with GrimsGyzerSetup.exe"));
+            pOut.Row("", features, Note(File.Exists(setup) ? "" : "available after installing with GrimsGhostSetup.exe"));
 
             // ---------------- layout: size the tab control to the largest page (pages scroll as a fallback)
             this.tabs = tabs;
