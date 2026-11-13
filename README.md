@@ -2,7 +2,7 @@
 
 A tiny, fully local screenshot, screen-recording and instant-replay tray app for Windows 10/11. Captures never leave your PC: the app has no upload code, and its built-in editor runs on a private loopback-only server.
 
-Free and open source (MIT). Made by GrimLeeIV with Claude.
+Free and open source (MIT). Made by Grim Lee with Claude.
 
 ## Install
 
