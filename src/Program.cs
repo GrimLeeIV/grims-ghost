@@ -147,6 +147,43 @@ namespace GrimsGhost
                         return 0;
                     }
 
+                    case "--test-flash": // records the screen at 60 fps while the selector opens, to catch flashes
+                    {
+                        var s = Settings.Load();
+                        var ff = Ffmpeg.Find(s.FfmpegPath) ?? throw new Exception("ffmpeg not found");
+                        string outFile = Path.Combine(Path.GetTempPath(), "ghost-flash.mkv");
+                        SelectionOverlay.VisibleToCaptureForTesting = true;
+                        var rec = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(ff,
+                            $"-hide_banner -y -f lavfi -i ddagrab=output_idx=0:framerate=60:video_size=1280x720 -t 2.5 -c:v h264_nvenc -preset p1 -rc constqp -qp 12 \"{outFile}\"")
+                        { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true });
+                        Thread.Sleep(900);
+                        var opened = DateTime.Now;
+                        if (args.Contains("frame"))   // the recording border instead of the selector
+                        {
+                            using (var f = new RecordFrame(new Rectangle(200, 150, 700, 380), "Ctrl+Shift+2"))
+                            {
+                                f.Show();
+                                f.SetCountdown(3);
+                                var until = DateTime.Now.AddMilliseconds(800);
+                                while (DateTime.Now < until) { Application.DoEvents(); Thread.Sleep(5); }
+                                f.Close();
+                            }
+                        }
+                        else
+                            using (var ov = new SelectionOverlay(SystemInformation.VirtualScreen, Rectangle.Empty, "TEST", WindowList.Collect()))
+                            {
+                                var t = new System.Windows.Forms.Timer { Interval = 800 };
+                                t.Tick += (a, b) => { t.Stop(); ov.Cancel(); };
+                                t.Start();
+                                ov.Run();
+                                ov.HideAll();
+                            }
+                        rec.StandardError.ReadToEnd();
+                        rec.WaitForExit(10000);
+                        Log.Write($"test-flash: overlay opened at {opened:HH:mm:ss.fff}, recording -> {outFile}");
+                        return 0;
+                    }
+
                     case "--test-tips": // tooltip placement at every edge/corner of every display
                     {
                         int bad = 0, n = 0;

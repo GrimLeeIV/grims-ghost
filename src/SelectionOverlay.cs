@@ -15,6 +15,7 @@ namespace GrimsGhost
     class OverlayPiece : Form
     {
         readonly bool clickThrough;
+        bool shownOnce;
         Rectangle placed = new Rectangle(int.MinValue, 0, 0, 0);
 
         public OverlayPiece(bool clickThrough = true)
@@ -45,7 +46,8 @@ namespace GrimsGhost
         {
             base.OnHandleCreated(e);
             if (clickThrough) Native.SetLayeredWindowAttributes(Handle, 0, 255, 2 /*LWA_ALPHA*/);
-            Native.SetWindowDisplayAffinity(Handle, Native.WDA_EXCLUDEFROMCAPTURE);
+            if (!SelectionOverlay.VisibleToCaptureForTesting)
+                Native.SetWindowDisplayAffinity(Handle, Native.WDA_EXCLUDEFROMCAPTURE);
         }
 
         protected override void WndProc(ref Message m)
@@ -63,6 +65,15 @@ namespace GrimsGhost
             placed = r;
             var h = Handle;
             if (r.IsEmpty) Native.SetWindowPos(h, IntPtr.Zero, 0, 0, 0, 0, Native.SWP_HIDEWINDOW | Native.SWP_NOACTIVATE | Native.SWP_NOMOVE | Native.SWP_NOSIZE | 0x4 /*NOZORDER*/);
+            else if (clickThrough && !shownOnce)
+            {
+                // First appearance: show it fully transparent, paint, then make it opaque (no unpainted frame).
+                shownOnce = true;
+                Native.SetLayeredWindowAttributes(h, 0, 0, 2 /*LWA_ALPHA*/);
+                Native.SetWindowPos(h, Native.HWND_TOPMOST, r.X, r.Y, r.Width, r.Height, Native.SWP_SHOWWINDOW | Native.SWP_NOACTIVATE);
+                Invalidate(); Update();
+                Native.SetLayeredWindowAttributes(h, 0, 255, 2 /*LWA_ALPHA*/);
+            }
             else
             {
                 Native.SetWindowPos(h, Native.HWND_TOPMOST, r.X, r.Y, r.Width, r.Height, Native.SWP_SHOWWINDOW | Native.SWP_NOACTIVATE);
@@ -164,6 +175,9 @@ namespace GrimsGhost
     {
         const int SnapDistance = 4; // px, only snaps when very, very close
 
+        /// <summary>Dev self-test only: lets a screen recording see the overlay (normally it's hidden from capture).</summary>
+        public static bool VisibleToCaptureForTesting;
+
         readonly Rectangle vs;
         readonly int W, H;
         readonly Rectangle prev;
@@ -192,7 +206,7 @@ namespace GrimsGhost
         {
             vs = virtualScreen; W = vs.Width; H = vs.Height;
             BackColor = Color.FromArgb(38, 5, 9);   // dim with a subtle red tint, to match the theme and guide the eye
-            Opacity = 0.42;
+            Opacity = 0;   // stays invisible until it has painted (see Run), otherwise it flashes grey for a few frames
             Cursor = BlankCursor;
             Bounds = vs;
 
@@ -226,6 +240,8 @@ namespace GrimsGhost
         {
             Show();
             Native.SetWindowPos(Handle, Native.HWND_TOPMOST, vs.X, vs.Y, W, H, Native.SWP_NOACTIVATE | Native.SWP_SHOWWINDOW);
+            Update();         // paint the red dim while still fully transparent...
+            Opacity = 0.42;   // ...then reveal it: no frame of Windows' default grey fill
             foreach (var p in Pieces) { p.Owner = this; _ = p.Handle; }
 
             cur = Snap(PointToClient(Cursor.Position));

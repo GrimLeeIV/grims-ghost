@@ -81,7 +81,8 @@ namespace GrimsGhost
         protected override void OnHandleCreated(EventArgs e)
         {
             base.OnHandleCreated(e);
-            Native.SetWindowDisplayAffinity(Handle, Native.WDA_EXCLUDEFROMCAPTURE);
+            if (!SelectionOverlay.VisibleToCaptureForTesting)
+                Native.SetWindowDisplayAffinity(Handle, Native.WDA_EXCLUDEFROMCAPTURE);
         }
 
         protected override void OnShown(EventArgs e)
