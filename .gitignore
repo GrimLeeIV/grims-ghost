@@ -18,3 +18,5 @@ deps/
 *.suo
 Thumbs.db
 desktop.ini
+# Graphify knowledge graph (local, rebuilt on demand)
+graphify-out/
