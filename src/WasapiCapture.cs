@@ -38,6 +38,37 @@ namespace GrimsGhost
             };
         }
 
+        /// <summary>Short, file-name-safe name for a separate track: "System sound", "Microphone", "Spotify", "All except Discord"…</summary>
+        public string FileLabel()
+        {
+            string name = Label.Length > 0 ? Label : Path.GetFileNameWithoutExtension(Device);
+            string s;
+            switch (Kind)
+            {
+                case AudioKind.Output: s = Device.Length == 0 ? "System sound" : name; break;
+                case AudioKind.Input: s = Device.Length == 0 ? "Microphone" : name; break;
+                case AudioKind.App: s = name; break;
+                default: s = "All except " + name; break;
+            }
+            foreach (char c in Path.GetInvalidFileNameChars()) s = s.Replace(c, '_');
+            return s.Trim().Length > 0 ? s.Trim() : "Sound";
+        }
+
+        /// <summary>"&lt;video name&gt; - &lt;source&gt;.wav" for each track, numbered if two sources share a name.</summary>
+        public static List<string> TrackPaths(string videoPath, IList<AudioSource> sources)
+        {
+            string dir = Path.GetDirectoryName(videoPath), stem = Path.GetFileNameWithoutExtension(videoPath);
+            var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var list = new List<string>();
+            foreach (var src in sources)
+            {
+                string label = src.FileLabel(), name = label;
+                for (int n = 2; !used.Add(name); n++) name = $"{label} {n}";
+                list.Add(Path.Combine(dir, $"{stem} - {name}.wav"));
+            }
+            return list;
+        }
+
         public string Describe()
         {
             string name = Label.Length > 0 ? Label : Device.Length > 0 ? Device : "default";

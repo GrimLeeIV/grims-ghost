@@ -105,7 +105,7 @@ namespace GrimsGhost
             g.SmoothingMode = SmoothingMode.None;
             g.TextRenderingHint = TextRenderingHint.AntiAliasGridFit;
 
-            var color = recording && !stopping ? IconFactory.RecRed : Color.FromArgb(255, 196, 0);
+            var color = recording && !stopping ? IconFactory.RecRed : Color.FromArgb(255, 150, 150);   // soft red until it's live
             using (var b = new SolidBrush(color))
             {
                 int o = border + 1;

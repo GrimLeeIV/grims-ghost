@@ -96,10 +96,17 @@ namespace GrimsGhost
         {
             if (inner.IsEmpty) { Place(Rectangle.Empty); return; }
             var outer = Rectangle.Inflate(inner, Thickness, Thickness);
-            if (Place(outer))
+            // Cut the hollow middle BEFORE the window is shown/resized, otherwise for one frame it's a
+            // solid rectangle (that was the grey flash over the hovered window when a selection started).
+            if (outer.Size != regionSize)
+            {
+                regionSize = outer.Size;
                 Native.SetRingRegion(Handle, new Rectangle(0, 0, outer.Width, outer.Height),
                     new Rectangle(Thickness, Thickness, inner.Width, inner.Height));
+            }
+            Place(outer);
         }
+        Size regionSize = Size.Empty;
 
         protected override void OnPaint(PaintEventArgs e)
         {
@@ -168,7 +175,7 @@ namespace GrimsGhost
         readonly Ring hoverRing = new Ring { Color = Color.FromArgb(200, 200, 205), Thickness = 1 };
         readonly Ring prevRing = new Ring { Color = Color.White, Gap = Color.FromArgb(30, 30, 30), Dashed = true, Thickness = 1 };
         readonly Tip label = new Tip(new Font("Segoe UI", 9f, FontStyle.Bold));
-        readonly Tip hint = new Tip(new Font("Segoe UI", 8.5f)) { Border = Color.FromArgb(70, 72, 82), TextColor = Color.FromArgb(200, 203, 212), Multiline = true };
+        readonly Tip hint = new Tip(new Font("Segoe UI", 9f, FontStyle.Bold));   // same look as the size readout
         IEnumerable<OverlayPiece> Pieces => new OverlayPiece[] { prevRing, hoverRing, selRing, up, down, left, right, label, hint };
 
         Point cur, anchor;
@@ -196,8 +203,7 @@ namespace GrimsGhost
             windows = windowsAbs.Select(ToClient).Where(r => r.Width > 0).ToList();
             monitors = Screen.AllScreens.Select(s => ToClient(s.Bounds)).ToList();
 
-            hintText = mode + "  ·  drag to select  ·  click a window\n" +
-                       "F display  ·  A all" + (prev.IsEmpty ? "" : "  ·  Enter last area") + "  ·  Alt no snap  ·  Esc cancel";
+            hintText = "F display  ·  A all" + (prev.IsEmpty ? "" : "  ·  Enter last area") + "  ·  Alt no snap  ·  Esc cancel";
         }
 
         static Cursor blank;
@@ -403,7 +409,7 @@ namespace GrimsGhost
             var size = label.Measure(text);
             int pw = size.Width + Px(12), ph = size.Height + Px(6), off = Px(18);
             var hs = hint.Measure(hintText);
-            int hw = hs.Width + Px(16), hh = hs.Height + Px(10);
+            int hw = hs.Width + Px(12), hh = ph;
             var (labelRect, hintRect) = LayoutTips(cur, new Size(pw, ph), new Size(hw, hh), MonitorAt(cur), off, Px(4));
             label.Show(text, Abs(labelRect));
             hint.Show(hintText, Abs(hintRect));

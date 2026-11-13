@@ -40,6 +40,8 @@ namespace GrimsGhost
             if (listener != null) return;
             using (var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("GrimsGhost.editor.html"))
             using (var r = new StreamReader(s, Encoding.UTF8)) html = r.ReadToEnd();
+            using (var s = Assembly.GetExecutingAssembly().GetManifestResourceStream("GrimsGhost.player.html"))
+            using (var r = new StreamReader(s, Encoding.UTF8)) playerHtml = r.ReadToEnd();
             // A stable port keeps the editor's remembered toolbar position; fall back to any free port.
             try { listener = new TcpListener(IPAddress.Loopback, 47851); listener.Start(); }
             catch (SocketException) { listener = new TcpListener(IPAddress.Loopback, 0); listener.Start(); }
@@ -76,7 +78,7 @@ namespace GrimsGhost
             var lines = Encoding.ASCII.GetString(head.ToArray()).Split(new[] { "\r\n" }, StringSplitOptions.None);
             var req = lines[0].Split(' ');
             if (req.Length < 2) return;
-            string method = req[0], path = req[1], host = null;
+            string method = req[0], path = req[1], host = null, range = null;
             long length = 0;
             foreach (var l in lines)
             {
@@ -85,6 +87,7 @@ namespace GrimsGhost
                 string k = l.Substring(0, i).Trim().ToLowerInvariant(), v = l.Substring(i + 1).Trim();
                 if (k == "host") host = v;
                 else if (k == "content-length") long.TryParse(v, out length);
+                else if (k == "range") range = v;
             }
             if (host != "127.0.0.1:" + port) { Send(ns, 403, "text/plain", Encoding.UTF8.GetBytes("forbidden")); return; }
 
@@ -94,8 +97,24 @@ namespace GrimsGhost
 
             if (method == "GET" && parts[0] == "edit")
             {
-                string page = html.Replace("{{TOKEN}}", token).Replace("{{NAME}}", WebUtility.HtmlEncode(Path.GetFileName(file)));
+                string name = WebUtility.HtmlEncode(Path.GetFileName(file));
+                string page = IsVideo(file)
+                    ? playerHtml.Replace("{{TOKEN}}", token).Replace("{{NAME}}", name).Replace("{{TRACKS}}", TracksNote(file))
+                    : html.Replace("{{TOKEN}}", token).Replace("{{NAME}}", name);
                 Send(ns, 200, "text/html; charset=utf-8", Encoding.UTF8.GetBytes(page));
+            }
+            else if (method == "GET" && parts[0] == "media")
+                SendFile(ns, file, file.EndsWith(".mkv", StringComparison.OrdinalIgnoreCase) ? "video/x-matroska" : "video/mp4", range);
+            else if (method == "POST" && parts[0] == "savecopy")
+            {
+                string ext = Path.GetExtension(file).TrimStart('.').ToLowerInvariant();
+                string outPath = AskSavePath(file, "Save video as", Path.GetFileName(file), $"{ext.ToUpperInvariant()} video (*.{ext})|*.{ext}", ext);
+                if (outPath == null) { Send(ns, 200, "application/json", Encoding.UTF8.GetBytes("{\"cancelled\":true}")); return; }
+                if (!string.Equals(Path.GetFullPath(outPath), Path.GetFullPath(file), StringComparison.OrdinalIgnoreCase))
+                    File.Copy(file, outPath, true);
+                lastSaved[token] = outPath;
+                Log.Write("player saved copy " + outPath);
+                Send(ns, 200, "application/json", Encoding.UTF8.GetBytes("{\"name\":" + Json(Path.GetFileName(outPath)) + "}"));
             }
             else if (method == "GET" && parts[0] == "img")
                 Send(ns, 200, "image/png", File.ReadAllBytes(file));
@@ -175,6 +194,70 @@ namespace GrimsGhost
         /// Native Windows "Save as" window, opened in front of the browser. Starts in the folder you last saved to,
         /// or the image's own day folder. Returns null if cancelled.
         /// </summary>
+        static string playerHtml;
+
+        public static bool IsVideo(string f) =>
+            f.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) || f.EndsWith(".mkv", StringComparison.OrdinalIgnoreCase);
+
+        /// <summary>"Separate tracks: System sound · Microphone" when split audio files sit next to the video.</summary>
+        static string TracksNote(string video)
+        {
+            try
+            {
+                string prefix = Path.GetFileNameWithoutExtension(video) + " - ";
+                var names = Directory.GetFiles(Path.GetDirectoryName(video), prefix + "*.wav")
+                    .Select(f => WebUtility.HtmlEncode(Path.GetFileNameWithoutExtension(f).Substring(prefix.Length))).ToList();
+                return names.Count == 0 ? "" : "Separate sound tracks saved beside it: <b>" + string.Join("</b> · <b>", names) + "</b>";
+            }
+            catch { return ""; }
+        }
+
+        /// <summary>Streams a file with HTTP range support, so the browser's player can seek.</summary>
+        static void SendFile(Stream s, string path, string type, string range)
+        {
+            try
+            {
+                using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))
+                {
+                    long len = fs.Length, start = 0, end = len - 1;
+                    bool partial = false;
+                    if (range != null && range.StartsWith("bytes=", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var spec = range.Substring(6).Split(',')[0].Trim().Split('-');
+                        if (spec[0].Length == 0 && spec.Length > 1 && long.TryParse(spec[1], out long suffix)) start = Math.Max(0, len - suffix);
+                        else
+                        {
+                            long.TryParse(spec[0], out start);
+                            if (spec.Length > 1 && long.TryParse(spec[1], out long e)) end = Math.Min(len - 1, e);
+                        }
+                        if (start >= len || start > end)
+                        {
+                            var h416 = Encoding.ASCII.GetBytes($"HTTP/1.1 416 Range Not Satisfiable\r\nContent-Range: bytes */{len}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                            s.Write(h416, 0, h416.Length); return;
+                        }
+                        partial = true;
+                    }
+                    long count = end - start + 1;
+                    var head = Encoding.ASCII.GetBytes(
+                        (partial ? "HTTP/1.1 206 Partial Content\r\n" : "HTTP/1.1 200 OK\r\n") +
+                        $"Content-Type: {type}\r\nContent-Length: {count}\r\nAccept-Ranges: bytes\r\n" +
+                        (partial ? $"Content-Range: bytes {start}-{end}/{len}\r\n" : "") +
+                        "Cache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nConnection: close\r\n\r\n");
+                    s.Write(head, 0, head.Length);
+                    fs.Position = start;
+                    var buf = new byte[1 << 16];
+                    while (count > 0)
+                    {
+                        int n = fs.Read(buf, 0, (int)Math.Min(buf.Length, count));
+                        if (n <= 0) break;
+                        s.Write(buf, 0, n);
+                        count -= n;
+                    }
+                }
+            }
+            catch (IOException) { /* the player cancelled this range (seeking) */ }
+        }
+
         static byte[] ReadBody(Stream ns, long length, long max)
         {
             if (length <= 0 || length > max) return null;

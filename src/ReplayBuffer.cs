@@ -27,6 +27,7 @@ namespace GrimsGhost
             public int Seconds = 30;
             public string Display = "";
             public List<AudioSource> Audio = new List<AudioSource>();
+            public bool SplitAudio;
         }
 
         static string goodVendor;
@@ -220,13 +221,13 @@ namespace GrimsGhost
                     if (dur <= 0) dur = o.Seconds;
 
                     // 3. audio covering exactly the same span, then mux to MP4
-                    var audio = new List<(string Wav, int Volume)>();
+                    var audio = new List<(string Wav, int Volume, AudioSource Src)>();
                     var notes = new List<string>();
                     for (int i = 0; i < sources.Count; i++)
                     {
                         var (cap, ring) = sources[i];
                         string wav = Path.Combine(work, $"audio{i}.wav");
-                        if (cap.Error == null && ring.SaveLast(dur + 0.5, 150, wav)) audio.Add((wav, cap.Source.Volume));
+                        if (cap.Error == null && ring.SaveLast(dur + 0.5, 150, wav)) audio.Add((wav, cap.Source.Volume, cap.Source));
                         else notes.Add($"{cap.Source.Describe()} wasn't captured" + (cap.Error != null ? ": " + cap.Error.Message : "."));
                     }
                     string note = notes.Count > 0 ? string.Join(" ", notes) : null;
@@ -244,6 +245,8 @@ namespace GrimsGhost
                     sb.Append($"-movflags +faststart \"{outPath}\"");
                     Run(sb.ToString(), work);
                     if (!File.Exists(outPath)) throw new IOException("Saving the replay failed.");
+                    if (o.SplitAudio && audio.Count > 0)
+                        Recorder.SaveTracks(o.Ffmpeg, outPath, audio.Select(a => (a.Wav, a.Src)).ToList(), dur, work);
                     Log.Write($"replay saved: {dur:0.0} s, {new FileInfo(outPath).Length / 1048576} MB in {timer.Elapsed.TotalSeconds:0.0} s");
                     return note;
                 }

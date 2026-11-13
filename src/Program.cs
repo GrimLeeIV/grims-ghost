@@ -77,7 +77,7 @@ namespace GrimsGhost
                             Quality = args.Length > 3 && Enum.TryParse(args[3], out VideoPreset preset)
                                 ? VideoQuality.ForPreset(preset, s.Video) : s.Video,
                             MaxSeconds = secs,
-                            Audio = s.ActiveAudio(),
+                            Audio = s.ActiveAudio(), SplitAudio = s.SplitAudio || args.Contains("split"),
                             OutputPath = Output.VideoPath(s, DateTime.Now),
                         });
                         string result = null, problem = null;
@@ -95,7 +95,7 @@ namespace GrimsGhost
                         using (var rb = new ReplayBuffer(new ReplayBuffer.Options
                         {
                             Ffmpeg = ff, Quality = s.Video, Seconds = int.Parse(args[1]),
-                            Display = s.ReplayDisplay, Audio = s.ActiveAudio(),
+                            Display = s.ReplayDisplay, Audio = s.ActiveAudio(), SplitAudio = s.SplitAudio || args.Contains("split"),
                         }))
                         {
                             rb.Start();

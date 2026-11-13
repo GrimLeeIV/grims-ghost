@@ -22,6 +22,7 @@ namespace GrimsGhost
             public VideoQuality Quality = new VideoQuality();
             public int MaxSeconds;
             public List<AudioSource> Audio = new List<AudioSource>();
+            public bool SplitAudio;
             public string OutputPath;
         }
 
@@ -233,14 +234,41 @@ namespace GrimsGhost
             p.WaitForExit();
 
             if (p.ExitCode == 0 && File.Exists(o.OutputPath) && new FileInfo(o.OutputPath).Length > 0)
+            {
+                if (o.SplitAudio) SaveTracks(o.Ffmpeg, o.OutputPath, ok.Select(a => (a.Wav, a.Cap.Source)).ToList(), null, tmp);
                 return o.OutputPath;
+            }
 
             Log.Write("mux failed: " + err);
             try { if (File.Exists(o.OutputPath)) File.Delete(o.OutputPath); } catch { }
             var fallback = Path.ChangeExtension(o.OutputPath, ".mkv");
             File.Move(vid, fallback);
+            if (o.SplitAudio) SaveTracks(o.Ffmpeg, fallback, ok.Select(a => (a.Wav, a.Cap.Source)).ToList(), null, tmp);
             problem = "Finalizing to MP4 failed, the raw recording was kept as .mkv.";
             return fallback;
+        }
+
+        /// <summary>
+        /// Writes each sound source as its own 16-bit WAV beside the video ("&lt;video&gt; - Microphone.wav"),
+        /// unmixed and at its original level, for editing. <paramref name="lastSeconds"/> trims to the clip (replays).
+        /// </summary>
+        public static void SaveTracks(string ffmpeg, string video, List<(string Wav, AudioSource Src)> tracks, double? lastSeconds, string workDir)
+        {
+            var paths = AudioSource.TrackPaths(video, tracks.Select(t => t.Src).ToList());
+            for (int i = 0; i < tracks.Count; i++)
+            {
+                try
+                {
+                    string trim = lastSeconds.HasValue ? $"-sseof -{lastSeconds.Value.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)} " : "";
+                    var p = Process.Start(new ProcessStartInfo(ffmpeg, $"-hide_banner -nostdin -y {trim}-i \"{tracks[i].Wav}\" -c:a pcm_s16le \"{paths[i]}\"")
+                    { UseShellExecute = false, CreateNoWindow = true, RedirectStandardError = true, WorkingDirectory = workDir });
+                    Native.KillWithUs(p);
+                    p.StandardError.ReadToEnd();
+                    p.WaitForExit();
+                    if (p.ExitCode != 0) Log.Write("separate track failed: " + paths[i]);
+                }
+                catch (Exception ex) { Log.Write("separate track: " + ex.Message); }
+            }
         }
 
         void Cleanup()

@@ -70,8 +70,8 @@ namespace GrimsGhost
         {
             try
             {
-                bool image = file.EndsWith(".png", StringComparison.OrdinalIgnoreCase);
-                string uri = image ? EditorServer.UrlFor(file) : new Uri(file).AbsoluteUri;
+                bool viewable = file.EndsWith(".png", StringComparison.OrdinalIgnoreCase) || EditorServer.IsVideo(file);
+                string uri = viewable ? EditorServer.UrlFor(file) : new Uri(file).AbsoluteUri;   // images → editor, videos → player page
                 string browser = DefaultBrowserExe();
                 if (browser != null && File.Exists(browser))
                     Process.Start(new ProcessStartInfo(browser, "\"" + uri + "\"") { UseShellExecute = false });

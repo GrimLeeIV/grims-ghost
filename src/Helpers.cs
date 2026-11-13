@@ -259,11 +259,13 @@ namespace GrimsGhost
 
     static class IconFactory
     {
-        public static readonly Color Accent = Color.FromArgb(41, 211, 255);
         public static readonly Color RecRed = Color.FromArgb(255, 64, 64);
-
+        public static readonly Color Accent = RecRed;          // Grim's Ghost is red-themed throughout
         public static readonly Color ReplayGreen = Color.FromArgb(61, 220, 132);
+        static readonly Color Body = Color.FromArgb(26, 14, 17);   // near-black with a hint of red
+        static readonly Color GhostWhite = Color.FromArgb(244, 240, 241);
 
+        /// <summary>Red capture brackets around a little ghost: white when idle, red while recording, green with instant replay on.</summary>
         public static Bitmap Draw(int size, bool recording, bool replay = false)
         {
             var bmp = new Bitmap(size, size, PixelFormat.Format32bppArgb);
@@ -273,19 +275,40 @@ namespace GrimsGhost
                 g.Clear(Color.Transparent);
                 g.ScaleTransform(size / 32f, size / 32f);
                 using (var path = RoundRect(new RectangleF(1, 1, 30, 30), 8))
-                using (var b = new SolidBrush(Color.FromArgb(22, 26, 34)))
+                using (var b = new SolidBrush(Body))
                     g.FillPath(b, path);
-                var c = recording ? RecRed : Accent;
-                using (var pen = new Pen(c, 3f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round })
+                using (var pen = new Pen(RecRed, 2.6f) { StartCap = LineCap.Round, EndCap = LineCap.Round, LineJoin = LineJoin.Round })
                 {
-                    g.DrawLines(pen, new[] { new PointF(7, 13), new PointF(7, 7), new PointF(13, 7) });
-                    g.DrawLines(pen, new[] { new PointF(19, 7), new PointF(25, 7), new PointF(25, 13) });
-                    g.DrawLines(pen, new[] { new PointF(25, 19), new PointF(25, 25), new PointF(19, 25) });
-                    g.DrawLines(pen, new[] { new PointF(13, 25), new PointF(7, 25), new PointF(7, 19) });
+                    g.DrawLines(pen, new[] { new PointF(6, 12), new PointF(6, 6), new PointF(12, 6) });
+                    g.DrawLines(pen, new[] { new PointF(20, 6), new PointF(26, 6), new PointF(26, 12) });
+                    g.DrawLines(pen, new[] { new PointF(26, 20), new PointF(26, 26), new PointF(20, 26) });
+                    g.DrawLines(pen, new[] { new PointF(12, 26), new PointF(6, 26), new PointF(6, 20) });
                 }
-                using (var b = new SolidBrush(replay && !recording ? ReplayGreen : c)) g.FillEllipse(b, 12.5f, 12.5f, 7, 7);
+                var ghostColor = recording ? RecRed : replay ? ReplayGreen : GhostWhite;
+                using (var ghost = GhostPath())
+                using (var b = new SolidBrush(ghostColor))
+                    g.FillPath(b, ghost);
+                using (var eye = new SolidBrush(Body))
+                {
+                    g.FillEllipse(eye, 13.2f, 13.4f, 2.2f, 2.8f);
+                    g.FillEllipse(eye, 16.8f, 13.4f, 2.2f, 2.8f);
+                }
             }
             return bmp;
+        }
+
+        /// <summary>Rounded head, straight sides, a wavy three-point hem.</summary>
+        static GraphicsPath GhostPath()
+        {
+            var p = new GraphicsPath();
+            p.AddArc(10.5f, 8.5f, 11f, 11f, 180, 180);                    // head
+            p.AddLine(21.5f, 14f, 21.5f, 23f);                            // right side
+            p.AddLines(new[] {                                            // hem
+                new PointF(21.5f, 23f), new PointF(19.7f, 21.4f), new PointF(17.9f, 23f),
+                new PointF(16f, 21.4f), new PointF(14.1f, 23f), new PointF(12.3f, 21.4f), new PointF(10.5f, 23f) });
+            p.AddLine(10.5f, 23f, 10.5f, 14f);                            // left side
+            p.CloseFigure();
+            return p;
         }
 
         public static Icon Make(bool recording, bool replay = false)

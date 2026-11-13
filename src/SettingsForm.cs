@@ -19,7 +19,7 @@ namespace GrimsGhost
         ComboBox cbShotMode, cbFullMode;
         CheckBox chkClip;
         HotkeyBox hkShot, hkRec, hkReplay, hkText;
-        CheckBox chkShotText, chkTextClip, chkTextFiles;
+        CheckBox chkShotText, chkTextClip, chkTextFiles, chkSplit;
         // video
         CheckBox chkSys, chkMic;
         NumericUpDown numCountdown, numMax, numQuality, numBitrate;
@@ -281,6 +281,11 @@ namespace GrimsGhost
                 ? "Another speaker or mic, a single app, or everything except an app."
                 : "Per-app sound needs Windows 10 version 2004 or newer."));
             RebuildExtras();
+
+            p.Header("Separate tracks");
+            chkSplit = Check("Also save each sound source as its own .wav beside the video", s.SplitAudio);
+            p.Row("", chkSplit);
+            p.Row("", Note("For editing: e.g. \"Recording … - Microphone.wav\". Unmixed and at full level, for recordings and replays."));
         }
 
         ComboBox DeviceCombo(bool render, string selectedId)
@@ -587,6 +592,7 @@ namespace GrimsGhost
             r.SystemVolume = tbSysVol.Value;
             r.MicVolume = tbMicVol.Value;
             r.ExtraAudio = extras.Select(a => a.Clone()).ToList();
+            r.SplitAudio = chkSplit.Checked;
             r.CountdownSeconds = (int)numCountdown.Value;
             r.MaxRecordSeconds = (int)numMax.Value;
             r.Preset = (VideoPreset)cbPreset.SelectedIndex;

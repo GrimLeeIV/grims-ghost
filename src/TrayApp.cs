@@ -351,7 +351,7 @@ namespace GrimsGhost
                 Region = recRegion,
                 Quality = s.Video.Clone(),
                 MaxSeconds = s.MaxRecordSeconds,
-                Audio = s.ActiveAudio(),
+                Audio = s.ActiveAudio(), SplitAudio = s.SplitAudio,
                 OutputPath = Output.VideoPath(s, DateTime.Now),
             });
             recorder = rcd;
@@ -427,7 +427,7 @@ namespace GrimsGhost
                         Quality = s.Video.Clone(),
                         Seconds = Math.Max(5, s.ReplaySeconds),
                         Display = s.ReplayDisplay,
-                        Audio = s.ActiveAudio(),
+                        Audio = s.ActiveAudio(), SplitAudio = s.SplitAudio,
                     });
                     var r = replay;
                     System.Threading.Tasks.Task.Run(() => r.Start());
@@ -541,7 +541,7 @@ namespace GrimsGhost
                         ApplySoundSettings();
                         bool replayChanged = old.ReplayEnabled != s.ReplayEnabled || old.ReplaySeconds != s.ReplaySeconds
                             || old.ReplayDisplay != s.ReplayDisplay || old.Video.Describe() != s.Video.Describe()
-                            || old.Video.Speed != s.Video.Speed || old.AudioSignature() != s.AudioSignature()
+                            || old.Video.Speed != s.Video.Speed || old.AudioSignature() != s.AudioSignature() || old.SplitAudio != s.SplitAudio
                             || old.FfmpegPath != s.FfmpegPath;
                         if (replayChanged)
                         {

@@ -65,6 +65,7 @@ namespace GrimsGhost
         public string SystemDevice = "", MicDevice = "";   // endpoint ids, "" = Windows default
         public int SystemVolume = 100, MicVolume = 100;
         public List<AudioSource> ExtraAudio = new List<AudioSource>();
+        public bool SplitAudio = false;   // also save each source as its own .wav beside the video
 
         /// <summary>Every source that should be recorded right now (the two basics plus enabled extras).</summary>
         public List<AudioSource> ActiveAudio()
@@ -132,7 +133,12 @@ namespace GrimsGhost
             if (!usesOld(ImageFolder) && !usesOld(VideoFolder)) return;
             try
             {
-                if (Directory.Exists(oldRoot) && !Directory.Exists(newRoot)) Directory.Move(oldRoot, newRoot);
+                // Antivirus / search indexing can hold the folder for a moment, so try a few times.
+                for (int i = 0; Directory.Exists(oldRoot) && !Directory.Exists(newRoot); i++)
+                {
+                    try { Directory.Move(oldRoot, newRoot); }
+                    catch when (i < 5) { System.Threading.Thread.Sleep(400); }
+                }
                 if (!Directory.Exists(newRoot)) return;
                 if (usesOld(ImageFolder)) ImageFolder = newRoot + ImageFolder.Substring(oldRoot.Length);
                 if (usesOld(VideoFolder)) VideoFolder = newRoot + VideoFolder.Substring(oldRoot.Length);
@@ -168,6 +174,7 @@ namespace GrimsGhost
                 s.CopyToClipboard = B(d, "CopyToClipboard", s.CopyToClipboard);
                 s.OpenInBrowser = B(d, "OpenInBrowser", s.OpenInBrowser);
                 s.TextHotkey = (Keys)I(d, "TextHotkey", (int)s.TextHotkey);
+                s.SplitAudio = B(d, "SplitAudio", s.SplitAudio);
                 s.TextToClipboard = B(d, "TextToClipboard", s.TextToClipboard);
                 s.TextSaveFiles = B(d, "TextSaveFiles", s.TextSaveFiles);
                 s.ShotSaveText = B(d, "ShotSaveText", s.ShotSaveText);
@@ -240,6 +247,7 @@ namespace GrimsGhost
                     "CopyToClipboard=" + CopyToClipboard,
                     "OpenInBrowser=" + OpenInBrowser,
                     "TextHotkey=" + (int)TextHotkey,
+                    "SplitAudio=" + SplitAudio,
                     "TextToClipboard=" + TextToClipboard,
                     "TextSaveFiles=" + TextSaveFiles,
                     "ShotSaveText=" + ShotSaveText,

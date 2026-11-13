@@ -56,7 +56,7 @@ Turn on *Open in my browser after saving* (Settings → Output & general). Scree
 - **Save as…, Copy, Output folder:** Save as… opens the normal Windows save window (PNG or JPG), starting in the image's folder or wherever you last saved. Copy puts the image on the clipboard, and Output folder opens the folder with your latest save selected.
 - You can also paste or drop an image onto the page to add it as an overlay.
 
-Videos open in the browser's own player.
+Recordings and replays open in a matching player page with **Save as…** (keep a copy anywhere) and **Output folder**, plus a note of any separate sound tracks saved beside them.
 
 The editor is served from `127.0.0.1` only. Each image gets an unguessable link, and requests from any other host name are refused.
 
@@ -77,6 +77,8 @@ For finer control, **+ Add source…** mixes more sources into the same track. T
 - **Another microphone / input.**
 - **Only one app's sound.** For example, just the game or just Spotify. Apps marked ♪ have sound in the Windows mixer right now.
 - **Everything except one app.** For example, everything but Discord. Use this instead of "system sound" when you don't want voice chat in the clip.
+
+**Separate tracks:** tick *Also save each sound source as its own .wav* and every recording and replay also gets one unmixed 16-bit WAV per source beside it, e.g. `Recording … - Microphone.wav`. They're ready to drop into an editor.
 
 Per-app sources need Windows 10 version 2004 or newer, and the app has to be running when recording starts. Nothing extra is downloaded for any audio feature.
 
