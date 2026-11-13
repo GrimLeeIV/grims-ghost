@@ -13,6 +13,16 @@ namespace GrimsGhost
     {
         public sealed class Result { public string Text, Language; public int Lines; }
 
+        /// <summary>Blocking helper for background threads: text in a bitmap ("" if none).</summary>
+        public static string ReadBitmap(System.Drawing.Bitmap bmp)
+        {
+            using (var ms = new System.IO.MemoryStream())
+            {
+                lock (bmp) bmp.Save(ms, System.Drawing.Imaging.ImageFormat.Png);
+                return ReadAsync(ms.ToArray()).GetAwaiter().GetResult().Text ?? "";
+            }
+        }
+
         public static async Task<Result> ReadAsync(byte[] png)
         {
             var engine = OcrEngine.TryCreateFromUserProfileLanguages()
@@ -25,7 +35,7 @@ namespace GrimsGhost
                 var dec = await BitmapDecoder.CreateAsync(ras);
                 uint w = dec.PixelWidth, h = dec.PixelHeight, longest = Math.Max(w, h);
                 // Small UI text reads much better enlarged; stay within the engine's size limit.
-                double k = longest < 1400 ? 2 : 1;
+                double k = longest <= 3000 ? 2 : 1;
                 if (longest * k > OcrEngine.MaxImageDimension) k = (double)OcrEngine.MaxImageDimension / longest;
                 var tf = new BitmapTransform
                 {

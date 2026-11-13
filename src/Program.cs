@@ -147,6 +147,36 @@ namespace GrimsGhost
                         return 0;
                     }
 
+                    case "--test-tips": // tooltip placement at every edge/corner of every display
+                    {
+                        int bad = 0, n = 0;
+                        foreach (var sc in Screen.AllScreens)
+                        {
+                            var m = sc.Bounds;
+                            foreach (var px in new[] { m.Left, m.Left + m.Width / 2, m.Right })
+                                foreach (var py in new[] { m.Top, m.Top + m.Height / 2, m.Bottom })
+                                {
+                                    var (l, h) = SelectionOverlay.LayoutTips(new Point(px, py), new Size(90, 24), new Size(330, 40), m, 18, 4);
+                                    bool ok = m.Contains(l) && m.Contains(h) && !l.IntersectsWith(h) && !l.Contains(new Point(px, py)) && !h.Contains(new Point(px, py));
+                                    n++; if (!ok) { bad++; Log.Write($"tips BAD at {px},{py} on {m}: label {l} hint {h}"); }
+                                }
+                        }
+                        Log.Write($"test-tips: {n - bad}/{n} placements inside the display, not overlapping, clear of the reticle");
+                        return bad == 0 ? 0 : 1;
+                    }
+
+                    case "--test-text": // --test-text x,y,w,h  (OCR an area of the screen)
+                    {
+                        var v = args[1].Split(',').Select(int.Parse).ToArray();
+                        using (var b = ScreenGrab.Grab(new Rectangle(v[0], v[1], v[2], v[3])))
+                        {
+                            var sw = System.Diagnostics.Stopwatch.StartNew();
+                            var t = Ocr.ReadBitmap(b);
+                            Log.Write($"test-text: {t.Split('\n').Length} lines in {sw.ElapsedMilliseconds} ms\n{(t.Length > 400 ? t.Substring(0, 400) + "…" : t)}");
+                        }
+                        return 0;
+                    }
+
                     case "--serve-editor": // --serve-editor file.png seconds
                     {
                         Log.Write("editor-url: " + EditorServer.UrlFor(Path.GetFullPath(args[1])));

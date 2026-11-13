@@ -18,7 +18,8 @@ namespace GrimsGhost
         // capture
         ComboBox cbShotMode, cbFullMode;
         CheckBox chkClip;
-        HotkeyBox hkShot, hkRec, hkReplay;
+        HotkeyBox hkShot, hkRec, hkReplay, hkText;
+        CheckBox chkShotText, chkTextClip, chkTextFiles;
         // video
         CheckBox chkSys, chkMic;
         NumericUpDown numCountdown, numMax, numQuality, numBitrate;
@@ -73,6 +74,15 @@ namespace GrimsGhost
             cbFullMode.Enabled = cbShotMode.SelectedIndex == 1;
             chkClip = Check("Also copy screenshots to the clipboard", s.CopyToClipboard);
             pCapture.Row("", chkClip);
+            chkShotText = Check("Save a .txt of any text beside each screenshot (makes them searchable)", s.ShotSaveText);
+            pCapture.Row("", chkShotText);
+
+            pCapture.Header("Capture text");
+            pCapture.Row("", Note("Select an area and its words are read on this PC (Windows' own text recognition)."));
+            chkTextClip = Check("Copy the text to the clipboard", s.TextToClipboard);
+            pCapture.Row("", chkTextClip);
+            chkTextFiles = Check("Also keep the image, with a .txt of its text beside it", s.TextSaveFiles);
+            pCapture.Row("", chkTextFiles);
 
             pCapture.Header("Hotkeys");
             hkShot = new HotkeyBox { Value = s.CaptureHotkey, Width = Px(200) };
@@ -81,6 +91,8 @@ namespace GrimsGhost
             pCapture.Row("Record / stop video", hkRec);
             hkReplay = new HotkeyBox { Value = s.ReplayHotkey, Width = Px(200) };
             pCapture.Row("Save instant replay", hkReplay);
+            hkText = new HotkeyBox { Value = s.TextHotkey, Width = Px(200) };
+            pCapture.Row("Capture text", hkText);
 
             // ---------------- Video
             pVideo.Header("Recording");
@@ -543,7 +555,7 @@ namespace GrimsGhost
 
         void SaveAndClose()
         {
-            var keys = new[] { hkShot.Value, hkRec.Value, hkReplay.Value };
+            var keys = new[] { hkShot.Value, hkRec.Value, hkReplay.Value, hkText.Value };
             if (keys.Distinct().Count() != keys.Length)
             {
                 MessageBox.Show(this, "Each hotkey must be different.", Text, MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -564,6 +576,10 @@ namespace GrimsGhost
             r.CaptureHotkey = hkShot.Value;
             r.RecordHotkey = hkRec.Value;
             r.ReplayHotkey = hkReplay.Value;
+            r.TextHotkey = hkText.Value;
+            r.ShotSaveText = chkShotText.Checked;
+            r.TextToClipboard = chkTextClip.Checked;
+            r.TextSaveFiles = chkTextFiles.Checked;
             r.RecordSystemAudio = chkSys.Checked;
             r.RecordMic = chkMic.Checked;
             r.SystemDevice = (cbSysDev.SelectedItem as CoreAudio.Endpoint)?.Id ?? "";

@@ -29,8 +29,9 @@ GrimsGhostSetup.exe --quiet [--screenshots-only] [--no-desktop] [--startup] [--n
 | Capture image | `Ctrl + Shift + 1` |
 | Record video (press again to stop) | `Ctrl + Shift + 2` |
 | Save instant replay | `Ctrl + Shift + 3` |
+| Capture text (area → clipboard) | `Ctrl + Shift + 4` |
 
-Left- or right-click the tray icon for the menu: Capture image, Record video, Instant replay (on/off), Output, Settings, Close. The tray dot turns **green** while instant replay is running and **red** while recording.
+Left- or right-click the tray icon for the menu: Capture image, Capture text, Record video, Instant replay (on/off), Output folders, Settings, Close. The tray dot turns **green** while instant replay is running and **red** while recording.
 
 Selecting an area happens live: the screen keeps playing underneath and your app keeps focus.
 
@@ -52,12 +53,19 @@ Turn on *Open in my browser after saving* (Settings → Output & general). Scree
 - **Rotate:** a dial you drag round and round with no end stops. Drag out past its edge for finer control, Shift snaps to 15°, and scrolling turns 1° (Shift 0.1°). The ±90° buttons turn the canvas too.
 - **Read text (O):** pulls the text out of the image using Windows' own offline text recognition. You can copy it or save it as a .txt.
 - **Moving around:** right-drag (or middle-drag, or Space + drag) to move around, scroll to zoom, double-click to fit.
-- **Save as…, Copy, Output:** Save as… opens the normal Windows save window (PNG or JPG), starting in the image's folder or wherever you last saved. Copy puts the image on the clipboard, and Output opens the folder with your latest save selected.
+- **Save as…, Copy, Output folder:** Save as… opens the normal Windows save window (PNG or JPG), starting in the image's folder or wherever you last saved. Copy puts the image on the clipboard, and Output folder opens the folder with your latest save selected.
 - You can also paste or drop an image onto the page to add it as an overlay.
 
 Videos open in the browser's own player.
 
 The editor is served from `127.0.0.1` only. Each image gets an unguessable link, and requests from any other host name are refused.
+
+## Capture text
+
+`Ctrl + Shift + 4` lets you select any area (the hint card reads TEXT). Its words are read by Windows' own offline text recognition and copied to your clipboard, with a soft chime when they're ready. In Settings → Capture you can also:
+
+- **Keep the image, with a .txt of its text beside it**
+- **Save a .txt beside every screenshot,** which makes your whole screenshot folder searchable with Windows search
 
 ## Audio
 

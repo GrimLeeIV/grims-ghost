@@ -117,9 +117,11 @@ namespace GrimsGhost
         string text = "";
         readonly Font font;
         public Color Border = IconFactory.RecRed;
+        public Color TextColor = Color.White;
+        public bool Multiline;
         public Tip(Font f) { font = f; }
 
-        public Size Measure(string t) => TextRenderer.MeasureText(t, font);
+        public Size Measure(string t) => TextRenderer.MeasureText(t, font, Size.Empty, TextFormatFlags.NoPadding);
 
         public void Show(string t, Rectangle screenRect)
         {
@@ -133,8 +135,14 @@ namespace GrimsGhost
             var g = e.Graphics;
             g.Clear(Color.FromArgb(16, 18, 24));
             using (var pen = new Pen(Border)) g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
-            TextRenderer.DrawText(g, text, font, ClientRectangle, Color.White,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding);
+            if (Multiline)
+            {
+                var r = ClientRectangle; r.Inflate(-(Width - Measure(text).Width) / 2, -(Height - Measure(text).Height) / 2);
+                TextRenderer.DrawText(g, text, font, r, TextColor, TextFormatFlags.Left | TextFormatFlags.Top | TextFormatFlags.NoPadding);
+            }
+            else
+                TextRenderer.DrawText(g, text, font, ClientRectangle, TextColor,
+                    TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.NoPadding | TextFormatFlags.SingleLine);
         }
 
         protected override void Dispose(bool disposing) { if (disposing) font.Dispose(); base.Dispose(disposing); }
@@ -160,7 +168,7 @@ namespace GrimsGhost
         readonly Ring hoverRing = new Ring { Color = Color.FromArgb(200, 200, 205), Thickness = 1 };
         readonly Ring prevRing = new Ring { Color = Color.White, Gap = Color.FromArgb(30, 30, 30), Dashed = true, Thickness = 1 };
         readonly Tip label = new Tip(new Font("Segoe UI", 9f, FontStyle.Bold));
-        readonly Tip hint = new Tip(new Font("Segoe UI", 9.5f)) { Border = Color.FromArgb(90, 90, 100) };
+        readonly Tip hint = new Tip(new Font("Segoe UI", 8.5f)) { Border = Color.FromArgb(70, 72, 82), TextColor = Color.FromArgb(200, 203, 212), Multiline = true };
         IEnumerable<OverlayPiece> Pieces => new OverlayPiece[] { prevRing, hoverRing, selRing, up, down, left, right, label, hint };
 
         Point cur, anchor;
@@ -172,10 +180,11 @@ namespace GrimsGhost
 
         public Rectangle? Result { get; private set; }
 
-        public SelectionOverlay(Rectangle virtualScreen, Rectangle prevAbs, bool video, List<Rectangle> windowsAbs) : base(clickThrough: false)
+        /// <param name="mode">Shown in the hint card: "SCREENSHOT", "RECORD" or "TEXT".</param>
+        public SelectionOverlay(Rectangle virtualScreen, Rectangle prevAbs, string mode, List<Rectangle> windowsAbs) : base(clickThrough: false)
         {
             vs = virtualScreen; W = vs.Width; H = vs.Height;
-            BackColor = Color.FromArgb(8, 9, 12);
+            BackColor = Color.FromArgb(38, 5, 9);   // dim with a subtle red tint, to match the theme and guide the eye
             Opacity = 0.42;
             Cursor = BlankCursor;
             Bounds = vs;
@@ -187,9 +196,8 @@ namespace GrimsGhost
             windows = windowsAbs.Select(ToClient).Where(r => r.Width > 0).ToList();
             monitors = Screen.AllScreens.Select(s => ToClient(s.Bounds)).ToList();
 
-            hintText = (video ? "RECORD" : "SCREENSHOT") +
-                "   ·   drag to select   ·   click a window   ·   F whole display   ·   A all displays" +
-                (prev.IsEmpty ? "" : "   ·   Enter last area") + "   ·   Alt no snap   ·   Esc cancel";
+            hintText = mode + "  ·  drag to select  ·  click a window\n" +
+                       "F display  ·  A all" + (prev.IsEmpty ? "" : "  ·  Enter last area") + "  ·  Alt no snap  ·  Esc cancel";
         }
 
         static Cursor blank;
@@ -281,7 +289,7 @@ namespace GrimsGhost
             {
                 case Keys.Escape: Cancel(); return true;
                 case Keys.Enter: case Keys.Space: if (!prev.IsEmpty) Finish(prev); return true;
-                case Keys.F: { var m = monitors.FirstOrDefault(r => r.Contains(cur)); if (!m.IsEmpty) Finish(m); return true; }
+                case Keys.F: { var m = MonitorAt(cur); if (!m.IsEmpty) Finish(m); return true; }
                 case Keys.A: Finish(new Rectangle(0, 0, W, H)); return true;
                 case Keys.Left: Nudge(-step, 0); return true;
                 case Keys.Right: Nudge(step, 0); return true;
@@ -320,7 +328,7 @@ namespace GrimsGhost
             sel = Rectangle.Empty;
             var h = HoverAt(cur);
             if (!h.IsEmpty) { Finish(h); return; }
-            var m = monitors.FirstOrDefault(r => r.Contains(cur));
+            var m = MonitorAt(cur);
             if (!m.IsEmpty) Finish(m);
         }
 
@@ -390,25 +398,44 @@ namespace GrimsGhost
             if (dragging && !sel.IsEmpty) text = $"{sel.Width} × {sel.Height}";
             else if (!hover.IsEmpty) text = $"{hover.Width} × {hover.Height}";
             else text = $"{cur.X + vs.X}, {cur.Y + vs.Y}";
+            // Size readout with the hint card tucked under it, as one block that follows the reticle
+            // and always stays fully inside the current display.
             var size = label.Measure(text);
             int pw = size.Width + Px(12), ph = size.Height + Px(6), off = Px(18);
-            int lx = x + off, ly = y + off;
-            var mon = monitors.FirstOrDefault(m => m.Contains(cur));
-            if (mon.IsEmpty) mon = new Rectangle(0, 0, W, H);
-            if (lx + pw > mon.Right) lx = x - off - pw;
-            if (ly + ph > mon.Bottom) ly = y - off - ph;
-            label.Show(text, Abs(new Rectangle(lx, ly, pw, ph)));
+            var hs = hint.Measure(hintText);
+            int hw = hs.Width + Px(16), hh = hs.Height + Px(10);
+            var (labelRect, hintRect) = LayoutTips(cur, new Size(pw, ph), new Size(hw, hh), MonitorAt(cur), off, Px(4));
+            label.Show(text, Abs(labelRect));
+            hint.Show(hintText, Abs(hintRect));
         }
 
-        void PlaceHint()
+        /// <summary>
+        /// Places the size readout and the hint card as one block beside the reticle: flips to the other side
+        /// near an edge and is always kept fully inside the display. The readout sits nearest the reticle.
+        /// </summary>
+        public static (Rectangle Label, Rectangle Hint) LayoutTips(Point cur, Size label, Size hint, Rectangle mon, int off, int gap)
         {
-            var mon = monitors.FirstOrDefault(m => m.Contains(cur));
-            if (mon.IsEmpty) mon = monitors.FirstOrDefault();
-            var size = hint.Measure(hintText);
-            int pad = Px(12);
-            var r = new Rectangle(mon.X + (mon.Width - size.Width) / 2 - pad, mon.Y + Px(18), size.Width + pad * 2, size.Height + Px(10));
-            hint.Show(hintText, Abs(r));
+            int x = cur.X, y = cur.Y, bw = Math.Max(label.Width, hint.Width), bh = label.Height + gap + hint.Height;
+            int bx = x + off, by = y + off;
+            if (bx + bw > mon.Right) bx = x - off - bw;
+            if (by + bh > mon.Bottom) by = y - off - bh;
+            bx = Math.Max(mon.Left, Math.Min(mon.Right - bw, bx));
+            by = Math.Max(mon.Top, Math.Min(mon.Bottom - bh, by));
+            bool above = by + bh / 2 < y, leftSide = bx + bw / 2 < x;
+            int lx = leftSide ? bx + bw - label.Width : bx, hx = leftSide ? bx + bw - hint.Width : bx;
+            return (new Rectangle(lx, above ? by + hint.Height + gap : by, label.Width, label.Height),
+                    new Rectangle(hx, above ? by : by + label.Height + gap, hint.Width, hint.Height));
         }
+
+        /// <summary>The display under a point, counting its right/bottom edge as inside (snapping lands exactly there).</summary>
+        Rectangle MonitorAt(Point p)
+        {
+            foreach (var m in monitors)
+                if (p.X >= m.Left && p.X <= m.Right && p.Y >= m.Top && p.Y <= m.Bottom) return m;
+            return monitors.OrderBy(m => Math.Abs(m.X + m.Width / 2 - p.X) + Math.Abs(m.Y + m.Height / 2 - p.Y)).FirstOrDefault();
+        }
+
+        void PlaceHint() { }
 
         protected override void OnPaint(PaintEventArgs e) => e.Graphics.Clear(BackColor);
 

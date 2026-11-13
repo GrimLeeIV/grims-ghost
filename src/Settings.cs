@@ -52,6 +52,10 @@ namespace GrimsGhost
         public FullMode FullScreenMode = FullMode.AllDisplays;
         public bool CopyToClipboard = true;
         public bool OpenInBrowser = false;
+        public Keys TextHotkey = Keys.Control | Keys.Shift | Keys.D4;
+        public bool TextToClipboard = true;    // capture-text hotkey: copy the words
+        public bool TextSaveFiles = false;     // capture-text hotkey: also keep the image + a .txt beside it
+        public bool ShotSaveText = false;      // every screenshot: save a .txt of its text beside it (searchable)
         public bool PlaySounds = true;
         public int SoundVolume = 50;
         public bool DesktopShortcutCreated = false;
@@ -163,6 +167,10 @@ namespace GrimsGhost
                 s.FullScreenMode = E(d, "FullScreenMode", s.FullScreenMode);
                 s.CopyToClipboard = B(d, "CopyToClipboard", s.CopyToClipboard);
                 s.OpenInBrowser = B(d, "OpenInBrowser", s.OpenInBrowser);
+                s.TextHotkey = (Keys)I(d, "TextHotkey", (int)s.TextHotkey);
+                s.TextToClipboard = B(d, "TextToClipboard", s.TextToClipboard);
+                s.TextSaveFiles = B(d, "TextSaveFiles", s.TextSaveFiles);
+                s.ShotSaveText = B(d, "ShotSaveText", s.ShotSaveText);
                 s.PlaySounds = B(d, "PlaySounds", s.PlaySounds);
                 s.SoundVolume = Math.Max(0, Math.Min(100, I(d, "SoundVolume", s.SoundVolume)));
                 // 1.3.0 saved the old 60% default; move untouched values to the new 50% default once.
@@ -231,6 +239,10 @@ namespace GrimsGhost
                     "FullScreenMode=" + FullScreenMode,
                     "CopyToClipboard=" + CopyToClipboard,
                     "OpenInBrowser=" + OpenInBrowser,
+                    "TextHotkey=" + (int)TextHotkey,
+                    "TextToClipboard=" + TextToClipboard,
+                    "TextSaveFiles=" + TextSaveFiles,
+                    "ShotSaveText=" + ShotSaveText,
                     "PlaySounds=" + PlaySounds,
                     "SoundVolume=" + SoundVolume,
                     "SoundDefaults2=True",

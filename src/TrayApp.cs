@@ -11,7 +11,8 @@ namespace GrimsGhost
 {
     sealed class TrayApp : ApplicationContext
     {
-        const int HotkeyShot = 1, HotkeyRec = 2, HotkeyReplay = 3;
+        const int HotkeyShot = 1, HotkeyRec = 2, HotkeyReplay = 3, HotkeyText = 4;
+        ToolStripMenuItem miText;
 
         enum RecState { Idle, Countdown, Starting, Recording, Stopping }
 
@@ -50,11 +51,12 @@ namespace GrimsGhost
             miShot = new ToolStripMenuItem("Capture image", null, (a, b) => Later(CaptureImage));
             miRec = new ToolStripMenuItem("Record video", null, (a, b) => Later(ToggleRecord));
             miReplay = new ToolStripMenuItem("Instant replay", null, (a, b) => SetReplay(replay == null, true));
-            var miOut = new ToolStripMenuItem("Output", null, (a, b) => OpenOutput());
+            miText = new ToolStripMenuItem("Capture text", null, (a, b) => Later(CaptureText));
+            var miOut = new ToolStripMenuItem("Output folders", null, (a, b) => OpenOutput());
             var miSet = new ToolStripMenuItem("Settings", null, (a, b) => OpenSettings());
             var miClose = new ToolStripMenuItem("Close", null, (a, b) => Quit());
             menu = new ContextMenuStrip { ShowImageMargin = false };
-            menu.Items.AddRange(new ToolStripItem[] { miShot, miRec, miReplay, new ToolStripSeparator(), miOut, miSet, new ToolStripSeparator(), miClose });
+            menu.Items.AddRange(new ToolStripItem[] { miShot, miText, miRec, miReplay, new ToolStripSeparator(), miOut, miSet, new ToolStripSeparator(), miClose });
 
             tray = new NotifyIcon { Icon = iconIdle, Text = "Grim's Ghost", ContextMenuStrip = menu, Visible = true };
             tray.MouseUp += (a, e) => { if (e.Button == MouseButtons.Left) Shell.ShowTrayMenu(tray); };
@@ -66,6 +68,7 @@ namespace GrimsGhost
                 if (id == HotkeyShot) CaptureImage();
                 else if (id == HotkeyRec) ToggleRecord();
                 else if (id == HotkeyReplay) SaveReplay();
+                else if (id == HotkeyText) CaptureText();
             };
             ApplyHotkeys();
             if (s.ReplayEnabled) SetReplay(true, false);
@@ -104,6 +107,8 @@ namespace GrimsGhost
             if (!hotkeys.Register(HotkeyShot, s.CaptureHotkey)) failed.Add(Hotkey.Format(s.CaptureHotkey));
             if (!hotkeys.Register(HotkeyRec, s.RecordHotkey)) failed.Add(Hotkey.Format(s.RecordHotkey));
             if (!hotkeys.Register(HotkeyReplay, s.ReplayHotkey)) failed.Add(Hotkey.Format(s.ReplayHotkey));
+            if (!hotkeys.Register(HotkeyText, s.TextHotkey)) failed.Add(Hotkey.Format(s.TextHotkey));
+            miText.ShortcutKeyDisplayString = Hotkey.Format(s.TextHotkey, "+");
             miShot.ShortcutKeyDisplayString = Hotkey.Format(s.CaptureHotkey, "+");
             miRec.ShortcutKeyDisplayString = Hotkey.Format(s.RecordHotkey, "+");
             miReplay.ShortcutKeyDisplayString = "save: " + Hotkey.Format(s.ReplayHotkey, "+");
@@ -134,7 +139,7 @@ namespace GrimsGhost
                 if (s.ScreenshotMode == ShotMode.FullScreen) { FullScreenShot(now); return; }
 
                 Bitmap img = null;
-                var rect = SelectRegion(false, r => img = ScreenGrab.Grab(r));
+                var rect = SelectRegion("SCREENSHOT", r => img = ScreenGrab.Grab(r));
                 if (rect == null || img == null) { ScreenGrab.TrimMemory(); return; }
                 SoundFx.Play(SoundFx.Kind.Shutter);
                 s.LastRegion = rect.Value;
@@ -167,9 +172,60 @@ namespace GrimsGhost
             SoundFx.Play(SoundFx.Kind.Shutter);
         }
 
+        // ------------------------------------------------------------------ capture text (OCR straight to clipboard)
+
+        void CaptureText()
+        {
+            if (selecting) return;
+            Bitmap img = null;
+            Rectangle? rect;
+            try { rect = SelectRegion("TEXT", r => img = ScreenGrab.Grab(r)); }
+            catch (Exception ex) { Fail("Text capture failed", ex); return; }
+            if (rect == null || img == null) { ScreenGrab.TrimMemory(); return; }
+            SoundFx.Play(SoundFx.Kind.Shutter);
+            s.LastRegion = rect.Value;
+            s.Save();
+            bool copy = s.TextToClipboard || !s.TextSaveFiles;   // with both off, still copy so the capture isn't lost
+            bool save = s.TextSaveFiles;
+            string pngPath = save ? Output.ImagePath(s, DateTime.Now, "") : null;
+
+            Task.Run(() =>
+            {
+                string text = null, error = null;
+                try
+                {
+                    text = Ocr.ReadBitmap(img);
+                    if (save)
+                    {
+                        Directory.CreateDirectory(Path.GetDirectoryName(pngPath));
+                        img.Save(pngPath, ImageFormat.Png);
+                        if (!string.IsNullOrWhiteSpace(text)) WriteText(Path.ChangeExtension(pngPath, ".txt"), text);
+                    }
+                }
+                catch (Exception ex) { error = ex.Message; Log.Write("capture text: " + ex); }
+                finally { img.Dispose(); ScreenGrab.TrimMemory(); }
+
+                OnUi(() =>
+                {
+                    if (error != null) { Balloon("Couldn't read text", error, ToolTipIcon.Warning); return; }
+                    if (string.IsNullOrWhiteSpace(text)) { Balloon("No text found", "Try a slightly bigger area, or zoom in on small text first.", ToolTipIcon.Info); return; }
+                    if (copy)
+                    {
+                        try { Clipboard.SetDataObject(text, true, 5, 60); }
+                        catch (Exception ex) { Log.Write("clipboard: " + ex.Message); }
+                    }
+                    SoundFx.Play(SoundFx.Kind.RecordStop);   // "got it"
+                    Log.Write($"capture text: {text.Split('\n').Length} lines" + (save ? " -> " + pngPath : ""));
+                });
+            });
+        }
+
+        static void WriteText(string path, string text) => File.WriteAllText(path, text, new System.Text.UTF8Encoding(false));
+
         void SaveImage(Bitmap img, string path, bool clipboard, bool openInBrowser = true)
         {
             bool open = openInBrowser && s.OpenInBrowser;
+            bool withText = s.ShotSaveText;
             if (clipboard)
             {
                 try { Clipboard.SetDataObject(img, true, 5, 60); }
@@ -182,6 +238,15 @@ namespace GrimsGhost
                     Directory.CreateDirectory(Path.GetDirectoryName(path));
                     img.Save(path, ImageFormat.Png);
                     if (open) Shell.OpenInBrowser(path);
+                    if (withText)   // a .txt beside the screenshot makes it findable with Windows search
+                    {
+                        try
+                        {
+                            var text = Ocr.ReadBitmap(img);
+                            if (!string.IsNullOrWhiteSpace(text)) WriteText(Path.ChangeExtension(path, ".txt"), text);
+                        }
+                        catch (Exception ex) { Log.Write("screenshot text: " + ex.Message); }
+                    }
                 }
                 catch (Exception ex) { OnUi(() => Fail("Could not save screenshot", ex)); }
                 finally
@@ -196,12 +261,12 @@ namespace GrimsGhost
         /// Live selection. Focus never leaves the app the user is in. <paramref name="whileHidden"/> runs right
         /// after the overlay has left the screen (used to grab the pixels).
         /// </summary>
-        Rectangle? SelectRegion(bool video, Action<Rectangle> whileHidden = null)
+        Rectangle? SelectRegion(string mode, Action<Rectangle> whileHidden = null)
         {
             selecting = true;
             try
             {
-                using (var ov = new SelectionOverlay(SystemInformation.VirtualScreen, s.LastRegion, video, WindowList.Collect()))
+                using (var ov = new SelectionOverlay(SystemInformation.VirtualScreen, s.LastRegion, mode, WindowList.Collect()))
                 {
                     activeOverlay = ov;
                     var result = ov.Run();
@@ -240,7 +305,7 @@ namespace GrimsGhost
             }
 
             Rectangle? rect;
-            try { rect = SelectRegion(true); }
+            try { rect = SelectRegion("RECORD"); }
             catch (Exception ex) { Fail("Selection failed", ex); return; }
             ScreenGrab.TrimMemory();
             if (rect == null) return;
