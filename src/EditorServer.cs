@@ -311,15 +311,27 @@ namespace GrimsGhost
                 {
                     owner.Show();
                     Native.ForceForeground(owner.Handle);
-                    // Windows won't let a background app jump in front of the browser on its own,
-                    // so once the save window exists, pull it to the front.
+                    // Windows won't let a background app jump in front of the browser on its own, and sometimes
+                    // refuses even with the usual tricks. So once the save window exists, make it always-on-top
+                    // (that can't be refused, so it's never hidden behind the browser), then keep asking for
+                    // focus for a few seconds until Windows agrees.
                     var sw = System.Diagnostics.Stopwatch.StartNew();
                     var poll = new System.Windows.Forms.Timer { Interval = 50 };
+                    IntPtr dlg = IntPtr.Zero;
+                    long foundAt = 0;
                     poll.Tick += (a, b) =>
                     {
-                        IntPtr h = Native.FindWindow("#32770", d.Title);
-                        if (h != IntPtr.Zero) { Native.ForceForeground(h); poll.Stop(); }
-                        else if (sw.ElapsedMilliseconds > 15000) poll.Stop();
+                        if (dlg == IntPtr.Zero)
+                        {
+                            dlg = Native.FindWindow("#32770", d.Title);
+                            if (dlg == IntPtr.Zero) { if (sw.ElapsedMilliseconds > 15000) poll.Stop(); return; }
+                            foundAt = sw.ElapsedMilliseconds;
+                            Native.SetWindowPos(dlg, Native.HWND_TOPMOST, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_SHOWWINDOW);
+                        }
+                        IntPtr fg = Native.GetForegroundWindow();
+                        if (fg == dlg || Native.GetAncestor(fg, 3 /*GA_ROOTOWNER*/) == Native.GetAncestor(dlg, 3)) { poll.Stop(); return; }
+                        Native.ForceForeground(dlg);
+                        if (sw.ElapsedMilliseconds - foundAt > 4000) { Log.Write("save window: shown on top, but Windows kept focus elsewhere"); poll.Stop(); }
                     };
                     poll.Start();
                     bool ok = d.ShowDialog(owner) == System.Windows.Forms.DialogResult.OK;
