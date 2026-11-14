@@ -28,17 +28,30 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:13px sy
 .tb.on{background:var(--accent);color:#fff}
 .tb svg{width:calc(var(--b) * .56);height:calc(var(--b) * .56);fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .tb:disabled{opacity:.35;cursor:default;background:transparent}
-#swatch{width:calc(var(--b) * .56);height:calc(var(--b) * .56);border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #0008}
-
 .pop{position:fixed;display:none;padding:12px;z-index:3}
-#pop{width:204px}
-#pop .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
-#pop .c{width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;box-shadow:0 0 0 1px #0007 inset;padding:0}
-#pop .c.on{border-color:#fff}
 .row{display:flex;align-items:center;justify-content:space-between;gap:6px;margin-top:12px;color:var(--dim)}
-#pop input[type=range]{width:112px;accent-color:var(--accent)}
-#pop .custom{display:flex;align-items:center;gap:8px;margin-top:12px;color:var(--dim);cursor:pointer}
-#pop input[type=color]{width:34px;height:24px;border:1px solid var(--line);border-radius:6px;background:transparent;padding:0;cursor:pointer}
+
+/* Tool options: beside the toolbar while the brush or text tool is in use, or a text box is selected */
+#opts{position:fixed;display:none;width:232px;padding:10px 12px 12px;z-index:2}
+#ohead{color:var(--dim);font-size:11px;text-transform:uppercase;letter-spacing:.08em;margin-bottom:9px}
+#opts .grid{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
+#opts .c{width:24px;height:24px;border-radius:50%;border:2px solid transparent;cursor:pointer;box-shadow:0 0 0 1px #0007 inset;padding:0}
+#opts .c.on{border-color:#fff}
+#opts .row{margin-top:10px}
+#opts .row > span:first-child{min-width:48px}
+#opts input[type=range]{flex:1;min-width:0;accent-color:var(--accent)}
+#opts input[type=color]{width:34px;height:24px;border:1px solid var(--line);border-radius:6px;background:transparent;padding:0;cursor:pointer;flex:none}
+#opts input[type=checkbox]{accent-color:var(--accent);margin:0}
+#opts select{flex:1;min-width:0;height:28px;border:1px solid var(--line);border-radius:6px;background:#0006;color:var(--fg);font:inherit;padding:0 6px;cursor:pointer}
+#opts select option{background:#1a1c22;color:var(--fg);font-size:14px}
+.num{width:54px;height:26px;border:1px solid var(--line);border-radius:6px;background:#0006;color:var(--fg);font:inherit;padding:0 4px;text-align:right;flex:none}
+.num:disabled,#opts input[type=range]:disabled{opacity:.4}
+.custom{display:flex;align-items:center;gap:8px;color:var(--dim);cursor:pointer}
+.check{display:flex;align-items:center;gap:6px;color:var(--fg);cursor:pointer}
+.seg{display:flex;gap:3px}
+.seg .mini{width:28px;padding:0;display:grid;place-items:center}
+.seg .mini svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.mini.on{background:var(--accent);border-color:var(--accent);color:#fff}
 #rotpop{width:268px}
 #rotpop .head{display:flex;align-items:center;justify-content:space-between;color:var(--dim)}
 #dial{display:block;margin:10px auto 0;width:170px;height:170px;cursor:grab;touch-action:none}
@@ -62,7 +75,7 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:13px sy
 #toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);padding:10px 14px;display:none;z-index:4;white-space:nowrap}
 #toast a{color:#ff9a9a;margin-left:12px;cursor:pointer;text-decoration:underline}
 #cropbar{position:fixed;display:none;gap:6px;z-index:2}
-#txt{position:fixed;display:none;background:transparent;border:1px dashed #ffffff90;outline:none;resize:none;overflow:hidden;padding:0;margin:0;white-space:pre;line-height:1.25;font-weight:600;font-family:system-ui,"Segoe UI",sans-serif;z-index:2;transform-origin:0 0}
+#txt{position:fixed;display:none;background:transparent;border:1px dashed #ffffff90;outline:none;resize:none;overflow:hidden;padding:0;margin:0;white-space:pre;line-height:1.25;z-index:2;transform-origin:0 0}
 #hint{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);color:var(--dim);font-size:12px;pointer-events:none;white-space:nowrap}
 @media (max-width:640px){#name,#hint{display:none}}
 </style>
@@ -80,7 +93,6 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:13px sy
     <button class="tb" data-tool="crop" title="Crop (C) · drag the edges, Enter when done"><svg viewBox="0 0 24 24"><path d="M6 2v16h16M2 6h16v16"/></svg></button>
     <button class="tb" id="rotbtn" title="Rotate (R)"><svg viewBox="0 0 24 24"><path d="M19.5 9.5a8 8 0 1 0-1.2 6.5"/><path d="M20 3.5v6h-6"/></svg></button>
     <button class="tb" id="ocrbtn" title="Read text from the image (O)"><svg viewBox="0 0 24 24"><path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3"/><path d="M7 9h10M7 12.5h10M7 16h6"/></svg></button>
-    <button class="tb" id="colorbtn" title="Colour &amp; size ( [ ] )"><span id="swatch"></span></button>
     <button class="tb" id="undo" title="Undo (Ctrl+Z)"><svg viewBox="0 0 24 24"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg></button>
     <button class="tb" id="redo" title="Redo (Ctrl+Y)"><svg viewBox="0 0 24 24"><path d="M15 14l5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg></button>
   </div>
@@ -89,10 +101,29 @@ html,body{margin:0;height:100%;background:var(--bg);color:var(--fg);font:13px sy
 
 <div id="tab" class="panel" title="Show the toolbar">›</div>
 
-<div id="pop" class="pop panel">
+<div id="opts" class="panel">
+  <div id="ohead">Brush</div>
   <div class="grid" id="colors"></div>
-  <label class="custom">Custom <input type="color" id="custom" value="#ff4040"></label>
-  <div class="row"><span>Size</span><input type="range" id="size" min="1" max="40" value="6"></div>
+  <div class="row"><label class="custom">Custom <input type="color" id="custom" value="#ff4040"></label></div>
+  <div id="brushopts">
+    <div class="row"><span>Size</span><input type="range" id="size" min="1" max="40" value="6" title="Brush size ( [ ] )"></div>
+  </div>
+  <div id="textopts">
+    <div class="row"><select id="tfont" title="Font"></select></div>
+    <div class="row"><span>Size</span><input type="range" id="tsize" min="8" max="300" title="Text size ( [ ] )"><input type="number" class="num" id="tsizen" min="4" max="2000"></div>
+    <div class="row">
+      <div class="seg"><button class="mini" id="tbold" title="Bold"><b>B</b></button><button class="mini" id="titalic" title="Italic"><i style="font-family:Georgia,serif">I</i></button></div>
+      <div class="seg">
+        <button class="mini" data-al="left" title="Align left"><svg viewBox="0 0 16 16"><path d="M2 3h12M2 6.5h8M2 10h12M2 13.5h8"/></svg></button>
+        <button class="mini" data-al="center" title="Align centre"><svg viewBox="0 0 16 16"><path d="M2 3h12M4 6.5h8M2 10h12M4 13.5h8"/></svg></button>
+        <button class="mini" data-al="right" title="Align right"><svg viewBox="0 0 16 16"><path d="M2 3h12M6 6.5h8M2 10h12M6 13.5h8"/></svg></button>
+      </div>
+    </div>
+    <div class="row"><label class="check" title="A contrasting edge around the letters, readable on any background"><input type="checkbox" id="toutline"> Outline</label></div>
+    <div class="row"><label class="check" title="A solid block behind the text"><input type="checkbox" id="tbg"> Background</label><input type="color" id="tbgc" value="#000000" title="Background colour"></div>
+    <div class="row" id="tbarow"><span>Opacity</span><input type="range" id="tba" min="10" max="100" value="70"></div>
+    <div class="row"><span>Turn</span><input type="range" id="trot" min="-180" max="180" value="0" title="Turn the selected text (or drag its round handle; Shift snaps to 15°)"><input type="number" class="num" id="trotn" min="-180" max="180" value="0"></div>
+  </div>
 </div>
 
 <div id="rotpop" class="pop panel">
@@ -140,13 +171,25 @@ const COLORS = ["#ff4040","#ff8a00","#ffd400","#3ddc84","#00c8ff","#3b82f6","#8b
 */
 let base = null, items = [], angle = 0, frame = null, hist = [], redoStack = [];
 let tool = "select", color = "#ff4040", size = 6;
+const FONTS = [
+  ["Segoe UI", '"Segoe UI",system-ui,sans-serif'], ["Arial", "Arial,sans-serif"], ["Verdana", "Verdana,sans-serif"],
+  ["Trebuchet MS", '"Trebuchet MS",sans-serif'], ["Georgia", "Georgia,serif"], ["Times New Roman", '"Times New Roman",serif'],
+  ["Consolas", 'Consolas,"Courier New",monospace'], ["Impact", "Impact,sans-serif"], ["Comic Sans MS", '"Comic Sans MS",cursive'],
+  ["Segoe Print", '"Segoe Print",cursive'], ["Segoe Script", '"Segoe Script",cursive'],
+];
+// Text style for new text, and the last style picked (changing a selected text box updates it too).
+const textOpts = { f: FONTS[0][1], s: 36, b: true, i: false, al: "left", ol: false, bgOn: false, bg: "#000000", ba: 0.7 };
 let scale = 1, ox = 0, oy = 0, fitted = true;
 let sel = null, drag = null, editing = null, hover = null, spaceDown = false;
 let cropStart = null;   // snapshot when the crop tool was opened (for Cancel)
 
 // ------------------------------------------------------------ load
 const src = new Image();
-src.onload = () => { base = toCanvas(src); frame = fullFrame(); fit(); draw(); };
+src.onload = () => {
+  base = toCanvas(src); frame = fullFrame();
+  textOpts.s = Math.max(14, Math.min(160, Math.round(Math.max(base.width, base.height) / 45)));   // readable on this image
+  fit(); draw();
+};
 src.onerror = () => toast("Couldn't load the image.");
 src.src = "/img/" + TOKEN;
 
@@ -173,9 +216,40 @@ function imageBoundsCen() {
 }
 const union = (a, b) => { const x = Math.min(a.x, b.x), y = Math.min(a.y, b.y); return { x, y, w: Math.max(a.x + a.w, b.x + b.w) - x, h: Math.max(a.y + a.h, b.y + b.h) - y }; };
 const frameScreen = () => ({ x: ox + frame.x * scale, y: oy + frame.y * scale, w: frame.w * scale, h: frame.h * scale });
-const font = s => `600 ${s}px system-ui,"Segoe UI",sans-serif`;
-const textSize = () => Math.round((size * 2.5 + 10) / scale);
+const tfont = it => `${it.i ? "italic " : ""}${it.b === false ? 400 : 700} ${it.s}px ${it.f || FONTS[0][1]}`;
+const tpad = it => it.bgOn ? Math.round(it.s * 0.3) : 0;
 const cropping = () => tool === "crop";
+const hexA = (h, a) => `rgba(${parseInt(h.slice(1, 3), 16)},${parseInt(h.slice(3, 5), 16)},${parseInt(h.slice(5, 7), 16)},${a})`;
+function contrast(h) {   // black or white, whichever stands out against this colour
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255);
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b > 0.55 ? "#000" : "#fff";
+}
+
+// Text boxes and image overlays can be turned (it.r degrees) about their centre.
+const center = it => { const b = bounds(it); return { x: b.x + b.w / 2, y: b.y + b.h / 2 }; };
+function itemXf(c, it) {
+  if (!it.r) return;
+  const m = center(it);
+  c.translate(m.x, m.y); c.rotate(it.r * Math.PI / 180); c.translate(-m.x, -m.y);
+}
+/** A point in image space → the item's own unturned space. */
+function local(it, p) {
+  if (!it.r) return p;
+  const m = center(it), q = rotP(p.x - m.x, p.y - m.y, -it.r * Math.PI / 180);
+  return { x: q.x + m.x, y: q.y + m.y };
+}
+/** Where the item's top-left corner really is (after turning), in image space. */
+function worldTL(it) {
+  const b = bounds(it), q = rotP(-b.w / 2, -b.h / 2, (it.r || 0) * Math.PI / 180);
+  return { x: b.x + b.w / 2 + q.x, y: b.y + b.h / 2 + q.y };
+}
+/** Run a change that alters the item's size, keeping its (turned) top-left corner where it is. */
+function keepTL(it, fn) {
+  const A = worldTL(it);
+  fn();
+  const b = bounds(it), q = rotP(-b.w / 2, -b.h / 2, (it.r || 0) * Math.PI / 180);
+  it.x += A.x - q.x - b.w / 2 - b.x; it.y += A.y - q.y - b.h / 2 - b.y;
+}
 
 // ------------------------------------------------------------ view
 const dpr = () => window.devicePixelRatio || 1;
@@ -217,11 +291,21 @@ function draw() {
   ctx.save();
   imageSpace(ctx);
   renderDoc(ctx);
-  if (sel) {
-    const b = bounds(sel);
+  if (sel && sel !== editing) {
+    ctx.save(); itemXf(ctx, sel);
+    const b = bounds(sel), m = 3 * px;
     ctx.lineWidth = 1.5 * px; ctx.setLineDash([6 * px, 4 * px]); ctx.strokeStyle = "#fff";
-    ctx.strokeRect(b.x - 3 * px, b.y - 3 * px, b.w + 6 * px, b.h + 6 * px); ctx.setLineDash([]);
-    if (sel.t === "i") { const h = 10 * px; ctx.fillStyle = "#fff"; ctx.fillRect(b.x + b.w - h / 2, b.y + b.h - h / 2, h, h); }
+    ctx.strokeRect(b.x - m, b.y - m, b.w + 2 * m, b.h + 2 * m); ctx.setLineDash([]);
+    if (sel.t !== "s") {
+      const h = 10 * px, hp = handlePos(sel);
+      ctx.fillStyle = "#fff"; ctx.strokeStyle = "#000a"; ctx.lineWidth = px;
+      ctx.fillRect(hp.size.x - h / 2, hp.size.y - h / 2, h, h); ctx.strokeRect(hp.size.x - h / 2, hp.size.y - h / 2, h, h);
+      ctx.strokeStyle = "#fff"; ctx.lineWidth = 1.5 * px;
+      ctx.beginPath(); ctx.moveTo(hp.rot.x, b.y - m); ctx.lineTo(hp.rot.x, hp.rot.y + 6 * px); ctx.stroke();
+      ctx.beginPath(); ctx.arc(hp.rot.x, hp.rot.y, 6 * px, 0, Math.PI * 2);
+      ctx.fillStyle = "#ff4040"; ctx.fill(); ctx.stroke();
+    }
+    ctx.restore();
   }
   if (tool === "brush" && hover && !drag) {
     ctx.beginPath(); ctx.arc(hover.x, hover.y, size / 2 * px, 0, Math.PI * 2);
@@ -249,9 +333,15 @@ function draw() {
     ctx.fillText(`${Math.round(frame.w)} × ${Math.round(frame.h)}`, fs.x + 4, fs.y - 8);
   }
   placeCropBar();
+  syncOpts();
 }
 
 function renderDoc(c) { c.drawImage(base, 0, 0); for (const it of items) renderItem(c, it); }
+function roundRect(c, x, y, w, h, r) {
+  r = Math.min(r, w / 2, h / 2);
+  c.beginPath(); c.moveTo(x + r, y); c.arcTo(x + w, y, x + w, y + h, r); c.arcTo(x + w, y + h, x, y + h, r);
+  c.arcTo(x, y + h, x, y, r); c.arcTo(x, y, x + w, y, r); c.closePath();
+}
 function renderItem(c, it) {
   if (it.t === "s") {
     const p = it.pts;
@@ -263,16 +353,27 @@ function renderItem(c, it) {
     c.stroke();
   } else if (it.t === "t") {
     if (it === editing) return;
-    c.font = font(it.s); c.textBaseline = "top"; c.fillStyle = it.c;
-    it.v.split("\n").forEach((l, i) => c.fillText(l, it.x, it.y + i * it.s * 1.25));
-  } else if (it.t === "i") c.drawImage(it.img, it.x, it.y, it.w, it.h);
+    const b = bounds(it), p = tpad(it), lines = it.v.split("\n"), al = it.al || "left";
+    c.save(); itemXf(c, it);
+    if (it.bgOn) { c.fillStyle = hexA(it.bg, it.ba); roundRect(c, b.x, b.y, b.w, b.h, p * 0.6); c.fill(); }
+    c.font = tfont(it); c.textBaseline = "top"; c.textAlign = al;
+    const tx = b.x + p + (al === "center" ? (b.w - 2 * p) / 2 : al === "right" ? b.w - 2 * p : 0);
+    const ly = i => b.y + p + i * it.s * 1.25;
+    if (it.ol) {
+      c.lineJoin = "round"; c.miterLimit = 2; c.lineWidth = Math.max(2, it.s * 0.16); c.strokeStyle = contrast(it.c);
+      lines.forEach((l, i) => c.strokeText(l, tx, ly(i)));
+    }
+    c.fillStyle = it.c;
+    lines.forEach((l, i) => c.fillText(l, tx, ly(i)));
+    c.restore();
+  } else if (it.t === "i") { c.save(); itemXf(c, it); c.drawImage(it.img, it.x, it.y, it.w, it.h); c.restore(); }
 }
 function bounds(it) {
   if (it.t === "i") return { x: it.x, y: it.y, w: it.w, h: it.h };
   if (it.t === "t") {
-    mctx.font = font(it.s);
-    const lines = it.v.split("\n");
-    return { x: it.x, y: it.y, w: Math.max(...lines.map(l => mctx.measureText(l).width), 4), h: lines.length * it.s * 1.25 };
+    mctx.font = tfont(it);
+    const lines = it.v.split("\n"), p = tpad(it);
+    return { x: it.x, y: it.y, w: Math.max(...lines.map(l => mctx.measureText(l).width), 4) + 2 * p, h: lines.length * it.s * 1.25 + 2 * p };
   }
   let x1 = 1e9, y1 = 1e9, x2 = -1e9, y2 = -1e9;
   for (const [x, y] of it.pts) { x1 = Math.min(x1, x); y1 = Math.min(y1, y); x2 = Math.max(x2, x); y2 = Math.max(y2, y); }
@@ -281,12 +382,23 @@ function bounds(it) {
 function hitTest(p) {
   for (let i = items.length - 1; i >= 0; i--) {
     const it = items[i]; if (it.t === "s") continue;
-    const b = bounds(it), m = 4 / scale;
-    if (p.x >= b.x - m && p.x <= b.x + b.w + m && p.y >= b.y - m && p.y <= b.y + b.h + m) return it;
+    const b = bounds(it), m = 4 / scale, q = local(it, p);
+    if (q.x >= b.x - m && q.x <= b.x + b.w + m && q.y >= b.y - m && q.y <= b.y + b.h + m) return it;
   }
   return null;
 }
-function onHandle(it, p) { const b = bounds(it), h = 9 / scale; return Math.abs(p.x - (b.x + b.w)) < h && Math.abs(p.y - (b.y + b.h)) < h; }
+/** Resize (bottom-right square) and turn (round knob above the top edge) handles, in the item's own space. */
+function handlePos(it) {
+  const b = bounds(it), m = 3 / scale;
+  return { size: { x: b.x + b.w + m, y: b.y + b.h + m }, rot: { x: b.x + b.w / 2, y: b.y - m - 24 / scale } };
+}
+function handleAt(it, p) {
+  if (!it || it.t === "s") return null;
+  const q = local(it, p), hp = handlePos(it), t = 10 / scale;
+  if (Math.hypot(q.x - hp.rot.x, q.y - hp.rot.y) < t) return "rot";
+  if (Math.abs(q.x - hp.size.x) < t && Math.abs(q.y - hp.size.y) < t) return "size";
+  return null;
+}
 
 // ------------------------------------------------------------ history
 function snap() { return { base, angle, frame: { ...frame }, items: items.map(it => ({ ...it, pts: it.pts ? it.pts.slice() : undefined })) }; }
@@ -348,10 +460,10 @@ $("cropreset").onclick = () => { frame = fullFrame(); if (angle % 180 !== 0 && M
 cv.addEventListener("contextmenu", e => e.preventDefault());
 cv.addEventListener("pointerdown", e => {
   if (!base) return;
-  if (editing) { finishText(); if (tool === "text" && e.button === 0) return; }
+  const p = toImg(e);
+  if (editing) { finishText(); if (tool === "text" && e.button === 0 && !handleAt(sel, p)) return; }
   closePops();
   try { cv.setPointerCapture(e.pointerId); } catch (_) {}
-  const p = toImg(e);
   if (e.button === 1 || e.button === 2 || spaceDown) {             // right / middle drag = move around
     e.preventDefault();
     drag = { k: "pan", sx: e.clientX, sy: e.clientY, ox, oy }; cv.style.cursor = "grabbing"; return;
@@ -364,16 +476,21 @@ cv.addEventListener("pointerdown", e => {
     const s = { t: "s", c: color, w: size / scale, pts: [[p.x, p.y]] };
     items.push(s); drag = { k: "draw", s }; draw(); return;
   }
+  const h = (tool === "select" || tool === "text") ? handleAt(sel, p) : null;
+  if (h === "rot") { commit(); drag = { k: "rot", it: sel }; return; }
+  if (h === "size") { commit(); drag = { k: "resize", it: sel, ar: sel.w / sel.h, s0: sel.s, w0: bounds(sel).w }; return; }
+  const hit = hitTest(p);
+  const grab = (it, edit) => { sel = it; commit(); drag = { k: "move", it, dx: p.x - it.x, dy: p.y - it.y, sx: e.clientX, sy: e.clientY, moved: false, edit }; draw(); };
   if (tool === "text") {
     e.preventDefault(); // keep the browser from moving focus back to the page after we focus the text box
-    const hit = hitTest(p);
-    if (hit && hit.t === "t") startText(hit, false);
-    else { commit(); const t = { t: "t", x: p.x, y: p.y, s: textSize(), c: color, v: "" }; items.push(t); startText(t, true); }
+    if (hit && hit.t === "t") { grab(hit, true); return; }   // drag moves it, a click edits it
+    sel = null; commit();
+    const t = { t: "t", c: color, v: "", ...textOpts, r: 0 }, pd = tpad(t);
+    t.x = p.x - pd; t.y = p.y - pd;
+    items.push(t); startText(t, true);
     return;
   }
-  if (sel && sel.t === "i" && onHandle(sel, p)) { commit(); drag = { k: "resize", it: sel, ar: sel.w / sel.h }; return; }
-  const hit = hitTest(p);
-  if (hit) { sel = hit; commit(); drag = { k: "move", it: hit, dx: p.x - hit.x, dy: p.y - hit.y, moved: false }; draw(); return; }
+  if (hit) { grab(hit, false); return; }
   sel = null; drag = { k: "pan", sx: e.clientX, sy: e.clientY, ox, oy }; draw();
 });
 
@@ -382,20 +499,44 @@ cv.addEventListener("pointermove", e => {
   if (!drag) {
     hover = p;
     if (cropping()) cv.style.cursor = cropCursor(cropHandleAt(e));
-    else if (tool === "select") cv.style.cursor = sel && sel.t === "i" && onHandle(sel, p) ? "nwse-resize" : hitTest(p) ? "move" : "grab";
+    else if (tool === "select" || tool === "text") {
+      const h = handleAt(sel, p), hit = h ? null : hitTest(p);
+      cv.style.cursor = h === "size" ? "nwse-resize" : h === "rot" ? "grab" : tool === "text" ? (hit && hit.t === "t" ? "move" : "text") : hit ? "move" : "grab";
+    }
     if (tool === "brush") draw();
     return;
   }
   if (drag.k === "pan") { ox = drag.ox + e.clientX - drag.sx; oy = drag.oy + e.clientY - drag.sy; fitted = false; draw(); placeText(); }
   else if (drag.k === "crop") { fitted = false; dragCrop(e); }
   else if (drag.k === "draw") { drag.s.pts.push([p.x, p.y]); draw(); }
-  else if (drag.k === "move") { drag.it.x = p.x - drag.dx; drag.it.y = p.y - drag.dy; drag.moved = true; draw(); }
-  else if (drag.k === "resize") { const it = drag.it; it.w = Math.max(8, p.x - it.x); it.h = it.w / drag.ar; draw(); }
+  else if (drag.k === "move") {
+    if (!drag.moved && Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 4) return;   // a click, not a drag (yet)
+    drag.it.x = p.x - drag.dx; drag.it.y = p.y - drag.dy; drag.moved = true; draw();
+  }
+  else if (drag.k === "resize") {
+    const it = drag.it;
+    keepTL(it, () => {
+      const d = local(it, p).x - it.x;
+      if (it.t === "i") { it.w = Math.max(8, d); it.h = it.w / drag.ar; }
+      else it.s = Math.max(4, Math.min(2000, Math.round(drag.s0 * Math.max(0.02, d / drag.w0))));
+    });
+    if (it.t === "t") textOpts.s = it.s;
+    draw();
+  }
+  else if (drag.k === "rot") {
+    const m = center(drag.it);
+    let r = Math.atan2(p.y - m.y, p.x - m.x) * 180 / Math.PI + 90;
+    if (e.shiftKey) r = Math.round(r / 15) * 15;
+    drag.it.r = norm180(r); cv.style.cursor = "grabbing"; draw();
+  }
 });
 
 cv.addEventListener("pointerup", () => {
   if (!drag) return;
-  if (drag.k === "move" && !drag.moved) { hist.pop(); syncUndo(); }
+  if (drag.k === "move" && !drag.moved) {
+    hist.pop(); syncUndo();
+    if (drag.edit) { const it = drag.it; drag = null; startText(it, false); return; }
+  }
   const wasPan = drag.k === "pan";
   drag = null;
   if (wasPan) setTool(tool, true);
@@ -413,6 +554,7 @@ cv.addEventListener("wheel", e => {
 
 cv.addEventListener("dblclick", e => {
   if (cropping()) { cropDone(); return; }
+  if (editing) return;
   const hit = hitTest(toImg(e));
   if (hit && hit.t === "t") { setTool("text"); startText(hit, false); }
   else if (!hit && tool === "select") { fit(); draw(); }
@@ -420,35 +562,57 @@ cv.addEventListener("dblclick", e => {
 
 // ------------------------------------------------------------ text
 const ta = $("txt");
+const textKey = it => JSON.stringify([it.v, Math.round(it.x * 100), Math.round(it.y * 100), it.s, it.c, it.f, it.b, it.i, it.al, it.ol, it.bgOn, it.bg, it.ba, it.r]);
 function startText(it, isNew) {
   if (!isNew) commit();
-  editing = it; it._new = isNew; sel = null;
-  ta.value = it.v; ta.style.color = it.c; ta.style.display = "block";
+  editing = it; it._new = isNew; sel = it; it._was = isNew ? null : textKey(it);
+  ta.value = it.v; ta.style.display = "block";
   placeText(); draw();
   ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length);
   requestAnimationFrame(() => { if (editing === it && document.activeElement !== ta) ta.focus(); });
 }
+/** The text box sits exactly over the text it edits, styled (font, background, turn) the same way. */
 function placeText() {
   if (!editing || !base) return;
-  const it = editing, p = baseToCen(it.x, it.y);
-  ta.style.left = (ox + p.x * scale) + "px"; ta.style.top = (oy + p.y * scale) + "px";
-  ta.style.fontSize = (it.s * scale) + "px";
-  ta.style.transform = `rotate(${angle}deg)`;
+  const it = editing, A = worldTL(it), p = baseToCen(A.x, A.y), pad = tpad(it) * scale, st = ta.style;
+  const a = (angle + (it.r || 0)) * Math.PI / 180, bw = 1;   // shift by the dashed border so the letters line up
+  st.left = (ox + p.x * scale - bw * (Math.cos(a) - Math.sin(a))) + "px";
+  st.top = (oy + p.y * scale - bw * (Math.sin(a) + Math.cos(a))) + "px";
+  st.font = `${it.i ? "italic " : ""}${it.b === false ? 400 : 700} ${it.s * scale}px ${it.f || FONTS[0][1]}`;
+  st.lineHeight = "1.25";
+  st.color = it.c; st.textAlign = it.al || "left"; st.padding = pad + "px";
+  st.background = it.bgOn ? hexA(it.bg, it.ba) : "transparent";
+  st.borderRadius = (pad * 0.6) + "px";
+  const o = Math.max(1, it.s * scale * 0.08), oc = contrast(it.c);
+  st.textShadow = it.ol ? [[o, 0], [-o, 0], [0, o], [0, -o], [o, o], [-o, -o], [o, -o], [-o, o]].map(([x, y]) => `${x}px ${y}px 0 ${oc}`).join(",") : "none";
+  st.transform = `rotate(${angle + (it.r || 0)}deg)`;
   autosize();
 }
-function autosize() { ta.style.width = "8px"; ta.style.height = "8px"; ta.style.width = (ta.scrollWidth + 10) + "px"; ta.style.height = ta.scrollHeight + "px"; }
-ta.addEventListener("input", () => { if (editing) editing.v = ta.value; autosize(); });
+function autosize() {
+  ta.style.width = "8px"; ta.style.height = "8px";
+  const b = editing ? bounds(editing) : null, minW = b ? b.w * scale + 2 : 0;
+  ta.style.width = Math.max(minW, ta.scrollWidth + 2) + Math.max(4, editing ? editing.s * scale * 0.15 : 4) + "px";   // room for the caret
+  ta.style.height = (ta.scrollHeight + 2) + "px";
+}
+ta.addEventListener("input", () => { if (editing) { const it = editing; keepTL(it, () => it.v = ta.value); placeText(); } });
 ta.addEventListener("keydown", e => {
   e.stopPropagation();
   if (e.key === "Escape" || (e.key === "Enter" && !e.shiftKey)) { e.preventDefault(); finishText(); }
 });
-ta.addEventListener("blur", () => { if (editing) finishText(); });
+// Leaving the text box for the options panel (font, size…) keeps editing; anywhere else finishes it.
+ta.addEventListener("blur", () => setTimeout(() => {
+  if (editing && document.activeElement !== ta && !opts.contains(document.activeElement)) finishText();
+}, 0));
 function finishText() {
   const it = editing; if (!it) return;
   editing = null; ta.style.display = "none";
-  it.v = ta.value;
-  if (!it.v.trim()) { items = items.filter(x => x !== it); if (it._new) { hist.pop(); syncUndo(); } }
-  delete it._new;
+  keepTL(it, () => it.v = ta.value);
+  if (!it.v.trim()) { items = items.filter(x => x !== it); if (it._new) { hist.pop(); syncUndo(); } if (sel === it) sel = null; }
+  else {
+    sel = (tool === "select" || tool === "text") ? it : null;   // stays selected, ready to move, turn or restyle
+    if (it._was && it._was === textKey(it)) { hist.pop(); syncUndo(); }   // opened but nothing changed: no undo step
+  }
+  delete it._new; delete it._was;
   draw();
 }
 
@@ -564,32 +728,110 @@ function setTool(t, keepView) {
   tool = t;
   document.querySelectorAll("[data-tool]").forEach(b => b.classList.toggle("on", b.dataset.tool === t));
   cv.style.cursor = t === "brush" ? "none" : t === "text" ? "text" : t === "crop" ? "crosshair" : "grab";
-  if (t !== "select") sel = null;
+  if (t !== "select" && t !== "text" && !editing) sel = null;
   if (!keepView && (t === "crop") !== wasCrop && fitted) fit();
   draw();
 }
 document.querySelectorAll("[data-tool]").forEach(b => b.onclick = () => setTool(b.dataset.tool));
 
-const pop = $("pop");
+// ------------------------------------------------------------ tool options (colour, brush size, text style)
+const opts = $("opts");
 COLORS.forEach(c => {
   const b = document.createElement("button");
   b.className = "c"; b.style.background = c; b.dataset.c = c; b.title = c;
   b.onclick = () => setColor(c);
   $("colors").appendChild(b);
 });
+FONTS.forEach(([name, css]) => {
+  const o = document.createElement("option");
+  o.value = css; o.textContent = name; o.style.fontFamily = css;
+  $("tfont").appendChild(o);
+});
+const textTarget = () => editing || (sel && sel.t === "t" ? sel : null);
+
+/** Change the text style: the defaults for new text, plus the text box being edited or selected (one undo step per gesture). */
+let optGesture = false;
+function applyText(fn) {
+  fn(textOpts);
+  const it = textTarget();
+  if (it) {
+    if (!editing && !optGesture) { commit(); optGesture = true; }
+    keepTL(it, () => fn(it));
+    if (editing) placeText();
+  }
+  draw();
+}
+document.addEventListener("pointerup", () => optGesture = false, true);
+opts.addEventListener("change", () => { optGesture = false; if (editing) ta.focus(); });
+// Clicking the panel itself (not a field) keeps the text box focused.
+opts.addEventListener("mousedown", e => { if (!e.target.closest("input, select")) e.preventDefault(); });
+
 function setColor(c) {
-  color = c; $("swatch").style.background = c; $("custom").value = c;
-  document.querySelectorAll("#colors .c").forEach(b => b.classList.toggle("on", b.dataset.c === c));
-  if (sel && sel.t === "t") { commit(); sel.c = c; draw(); }
-  if (editing) { editing.c = c; ta.style.color = c; }
+  color = c;
+  const it = textTarget();
+  if (it) applyText(o => o.c = c); else draw();
 }
 function setSize(s) { size = Math.max(1, Math.min(40, s)); $("size").value = size; draw(); }
+function setTextSize(s) { s = Math.round(s); if (s >= 4 && s <= 2000) applyText(o => o.s = s); }
 $("custom").oninput = e => setColor(e.target.value);
 $("size").oninput = e => setSize(+e.target.value);
+$("tfont").onchange = e => applyText(o => o.f = e.target.value);
+$("tsize").oninput = e => setTextSize(+e.target.value);
+$("tsizen").oninput = e => setTextSize(+e.target.value);
+$("tbold").onclick = () => { const v = !((textTarget() || textOpts).b !== false); applyText(o => o.b = v); };
+$("titalic").onclick = () => { const v = !(textTarget() || textOpts).i; applyText(o => o.i = v); };
+opts.querySelectorAll("[data-al]").forEach(b => b.onclick = () => applyText(o => o.al = b.dataset.al));
+$("toutline").onchange = e => applyText(o => o.ol = e.target.checked);
+$("tbg").onchange = e => applyText(o => o.bgOn = e.target.checked);
+$("tbgc").oninput = e => { const v = e.target.value; applyText(o => { o.bg = v; o.bgOn = true; }); };
+$("tba").oninput = e => { const v = +e.target.value / 100; applyText(o => o.ba = v); };
+const turnText = v => { const it = textTarget(); if (it && !isNaN(v)) { if (!editing && !optGesture) { commit(); optGesture = true; } it.r = norm180(v); placeText(); draw(); } };
+$("trot").oninput = e => turnText(+e.target.value);
+$("trotn").oninput = e => turnText(parseFloat(e.target.value));
+for (const id of ["tsizen", "trotn"]) $(id).addEventListener("keydown", e => { e.stopPropagation(); if (e.key === "Enter") e.target.blur(); });
+
+/** Show the options that fit what's happening, and keep their values in step with the selected text. */
+function syncOpts() {
+  const tt = textTarget();
+  const mode = cropping() || openPop ? "" : tool === "brush" ? "brush" : (tool === "text" || tt) ? "text" : "";
+  opts.style.display = mode ? "block" : "none";
+  if (!mode) return;
+  const set = (id, v, prop = "value") => { const el = $(id); if (document.activeElement !== el && el[prop] !== v) el[prop] = v; };
+  $("ohead").textContent = mode === "brush" ? "Brush" : tt ? "Text" : "New text";
+  $("brushopts").style.display = mode === "brush" ? "" : "none";
+  $("textopts").style.display = mode === "text" ? "" : "none";
+  const cur = mode === "text" && tt ? tt.c : color;
+  document.querySelectorAll("#colors .c").forEach(b => b.classList.toggle("on", b.dataset.c === cur));
+  set("custom", cur);
+  if (mode === "text") {
+    const o = tt || textOpts;
+    set("tfont", o.f || FONTS[0][1]);
+    set("tsize", String(Math.min(300, o.s))); set("tsizen", String(o.s));
+    $("tbold").classList.toggle("on", o.b !== false);
+    $("titalic").classList.toggle("on", !!o.i);
+    opts.querySelectorAll("[data-al]").forEach(b => b.classList.toggle("on", b.dataset.al === (o.al || "left")));
+    set("toutline", !!o.ol, "checked"); set("tbg", !!o.bgOn, "checked");
+    set("tbgc", o.bg || "#000000"); set("tba", String(Math.round((o.ba ?? 0.7) * 100)));
+    $("tbarow").style.display = o.bgOn ? "" : "none";
+    const r = tt ? Math.round((tt.r || 0) * 10) / 10 : 0;
+    set("trot", String(Math.round(r))); set("trotn", String(r));
+    $("trot").disabled = $("trotn").disabled = !tt;
+  }
+  placeOpts();
+}
+/** Beside the toolbar (or its tucked-away tab), on whichever side has room. */
+function placeOpts() {
+  const t = (layout.collapsed ? tab : tools).getBoundingClientRect(), w = opts.offsetWidth, h = opts.offsetHeight, m = 8;
+  let x, y = Math.max(m, Math.min(innerHeight - h - m, t.top));
+  if (t.right + m + w <= innerWidth) x = t.right + m;
+  else if (t.left - m - w >= 0) x = t.left - m - w;
+  else { x = Math.max(m, Math.min(innerWidth - w - m, t.left)); y = Math.min(innerHeight - h - m, t.bottom + m); }
+  opts.style.left = x + "px"; opts.style.top = y + "px";
+}
 
 let openPop = null, openBtn = null;
-function togglePop(p, btn) { if (openPop === p) { closePops(); return; } closePops(); p.style.display = "block"; openPop = p; openBtn = btn; positionPop(); btn.classList.add("on"); if (p === rotpop) drawDial(); if (p === ocrpop && !ocrDone) readText(); }
-function closePops() { for (const p of [pop, rotpop, ocrpop]) p.style.display = "none"; if (openBtn) openBtn.classList.remove("on"); openPop = openBtn = null; }
+function togglePop(p, btn) { if (openPop === p) { closePops(); return; } closePops(); p.style.display = "block"; openPop = p; openBtn = btn; positionPop(); btn.classList.add("on"); syncOpts(); if (p === rotpop) drawDial(); if (p === ocrpop && !ocrDone) readText(); }
+function closePops() { for (const p of [rotpop, ocrpop]) p.style.display = "none"; if (openBtn) openBtn.classList.remove("on"); openPop = openBtn = null; syncOpts(); }
 /** Beside the toolbar when there's room, otherwise below / left / above it, lined up with the button. */
 function positionPop() {
   if (!openPop) return;
@@ -602,7 +844,6 @@ function positionPop() {
   else { x = clampX(b.left - 12); y = Math.max(m, t.top - m - ph); }
   openPop.style.left = x + "px"; openPop.style.top = y + "px";
 }
-$("colorbtn").onclick = e => { e.stopPropagation(); togglePop(pop, $("colorbtn")); };
 $("ocrbtn").onclick = e => { e.stopPropagation(); togglePop(ocrpop, $("ocrbtn")); };
 
 // ------------------------------------------------------------ read text (OCR, done by Windows on this PC)
@@ -753,7 +994,7 @@ function toast(msg, withReveal) {
 
 // ------------------------------------------------------------ keyboard
 document.addEventListener("keydown", e => {
-  if (editing || e.target.tagName === "INPUT") return;
+  if (editing || e.target.tagName === "INPUT" || e.target.tagName === "SELECT") return;
   const k = e.key.toLowerCase();
   if (e.ctrlKey || e.metaKey) {
     if (k === "z" && !e.shiftKey) undo();
@@ -774,6 +1015,10 @@ document.addEventListener("keydown", e => {
   else if (k === "r") togglePop(rotpop, $("rotbtn"));
   else if (k === "o") togglePop(ocrpop, $("ocrbtn"));
   else if (k === "i") fileInput.click();
+  else if ((k === "[" || k === "]") && (tool === "text" || textTarget())) {
+    const s = (textTarget() || textOpts).s;
+    optGesture = false; setTextSize(k === "]" ? Math.max(s + 1, s * 1.1) : Math.min(s - 1, s / 1.1));
+  }
   else if (k === "[") setSize(size - 1);
   else if (k === "]") setSize(size + 1);
   else if (k === "0") { fit(); draw(); }

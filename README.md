@@ -47,7 +47,8 @@ Selecting an area happens live: the screen keeps playing underneath and your app
 
 Turn on *Open in my browser after saving* (Settings → Output & general). Screenshots then open in a minimal editor in your default browser:
 
-- **Toolbar:** select/move, brush, text, image overlays, crop, rotate and read text, plus a pop-out colour and size picker and undo/redo. Drag the toolbar by its dots, and drag its corner handle to reshape it into a column, a row or a grid. **‹** tucks it into the nearest side wall as a slim tab; click the tab to bring it back. The layout is remembered.
+- **Toolbar:** select/move, brush, text, image overlays, crop, rotate, read text, and undo/redo. While you use the brush or text tool, an options panel sits beside the toolbar with the colours and that tool's settings.
+- **Text:** pick a font, size, bold/italic and alignment, add an outline, or put a background block behind it (any colour, adjustable opacity). Drag text to move it and click it to edit it. Selected text and image overlays have a round knob to turn them (Shift snaps to 15°) and a corner handle to resize them. `[` and `]` change the size. Drag the toolbar by its dots, and drag its corner handle to reshape it into a column, a row or a grid. **‹** tucks it into the nearest side wall as a slim tab; click the tab to bring it back. The layout is remembered.
 - **The canvas keeps your media's size and shape:** rotating turns the picture inside it, and uncovered corners are saved transparent.
 - **Crop:** drag the canvas edges or corners (Shift keeps the shape), drag inside to move the box, or drag outside to draw a new one. Enter or Done applies it, and Reset goes back to the original. Cropping never throws pixels away, so you can always widen it again.
 - **Rotate:** a dial you drag round and round with no end stops. Drag out past its edge for finer control, Shift snaps to 15°, and scrolling turns 1° (Shift 0.1°). The ±90° buttons turn the canvas too.

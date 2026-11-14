@@ -20,3 +20,6 @@ Thumbs.db
 desktop.ini
 # Graphify knowledge graph (local, rebuilt on demand)
 graphify-out/
+
+# One-time launch script (local only)
+.launch/
