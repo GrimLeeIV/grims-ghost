@@ -9,3 +9,7 @@
 *.ico binary
 *.png binary
 *.exe binary
+*.sh text eol=lf
+*.py text eol=lf
+*.desktop text eol=lf
+*.jpg binary

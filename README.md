@@ -4,6 +4,8 @@ A tiny, fully local screenshot, screen-recording and instant-replay tray app for
 
 Free and open source (MIT). Made by Grim Lee with Claude.
 
+**On Linux?** There's a preview version in [`linux/`](linux/README.md), for X11 and Wayland.
+
 ## Install
 
 Download **GrimsGhostSetup.exe** (≈240 KB) from the [Releases](../../releases) page and run it. Pick the features you want, and the installer ticks the dependencies each one needs:

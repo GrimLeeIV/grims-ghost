@@ -23,3 +23,7 @@ graphify-out/
 
 # One-time launch script (local only)
 .launch/
+
+# Python
+__pycache__/
+*.pyc
