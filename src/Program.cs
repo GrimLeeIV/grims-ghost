@@ -214,6 +214,21 @@ namespace GrimsGhost
                         return 0;
                     }
 
+                    case "--add-covers": // --add-covers folder  (thumbnails for videos saved before covers existed)
+                    {
+                        var ff = Ffmpeg.Find(Settings.Load().FfmpegPath) ?? throw new Exception("ffmpeg not found");
+                        string work = Path.Combine(Path.GetTempPath(), "GrimsGhost", "covers");
+                        int ok = 0, all = 0;
+                        foreach (var f in Directory.GetFiles(args[1], "*.mp4", SearchOption.AllDirectories))
+                        {
+                            if (Path.GetFileName(f).StartsWith("~")) continue;
+                            all++;
+                            if (VideoCover.Embed(ff, f, work)) ok++;
+                        }
+                        Log.Write($"add-covers: {ok}/{all} videos in {args[1]} have a cover");
+                        return ok == all ? 0 : 1;
+                    }
+
                     case "--serve-editor": // --serve-editor file.png seconds
                     {
                         Log.Write("editor-url: " + EditorServer.UrlFor(Path.GetFullPath(args[1])));

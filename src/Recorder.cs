@@ -235,6 +235,7 @@ namespace GrimsGhost
 
             if (p.ExitCode == 0 && File.Exists(o.OutputPath) && new FileInfo(o.OutputPath).Length > 0)
             {
+                VideoCover.Embed(o.Ffmpeg, o.OutputPath, tmp);
                 if (o.SplitAudio) SaveTracks(o.Ffmpeg, o.OutputPath, ok.Select(a => (a.Wav, a.Cap.Source)).ToList(), null, tmp);
                 return o.OutputPath;
             }

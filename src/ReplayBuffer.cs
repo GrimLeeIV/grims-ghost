@@ -245,6 +245,7 @@ namespace GrimsGhost
                     sb.Append($"-movflags +faststart \"{outPath}\"");
                     Run(sb.ToString(), work);
                     if (!File.Exists(outPath)) throw new IOException("Saving the replay failed.");
+                    VideoCover.Embed(o.Ffmpeg, outPath, work);
                     if (o.SplitAudio && audio.Count > 0)
                         Recorder.SaveTracks(o.Ffmpeg, outPath, audio.Select(a => (a.Wav, a.Src)).ToList(), dur, work);
                     Log.Write($"replay saved: {dur:0.0} s, {new FileInfo(outPath).Length / 1048576} MB in {timer.Elapsed.TotalSeconds:0.0} s");
