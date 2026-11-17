@@ -19,7 +19,7 @@ namespace GrimsGhost
         ComboBox cbShotMode, cbFullMode;
         CheckBox chkClip;
         HotkeyBox hkShot, hkRec, hkReplay, hkText;
-        CheckBox chkShotText, chkTextClip, chkTextFiles, chkSplit;
+        CheckBox chkShotText, chkTextClip, chkTextFiles, chkSplit, chkFreeze;
         // video
         CheckBox chkSys, chkMic;
         NumericUpDown numCountdown, numMax, numQuality, numBitrate;
@@ -72,6 +72,9 @@ namespace GrimsGhost
             pCapture.Row("Whole screen means", cbFullMode);
             cbShotMode.SelectedIndexChanged += (a, b) => cbFullMode.Enabled = cbShotMode.SelectedIndex == 1;
             cbFullMode.Enabled = cbShotMode.SelectedIndex == 1;
+            chkFreeze = Check("Freeze the screen while I select (catches pop-up menus and tooltips)", s.FreezeScreen);
+            pCapture.Row("", chkFreeze);
+            pCapture.Row("", Note("Z in the selector switches between frozen and live for that capture. Recording always stays live."));
             chkClip = Check("Also copy screenshots to the clipboard", s.CopyToClipboard);
             pCapture.Row("", chkClip);
             chkShotText = Check("Save a .txt of any text beside each screenshot (makes them searchable)", s.ShotSaveText);
@@ -583,6 +586,7 @@ namespace GrimsGhost
             r.ReplayHotkey = hkReplay.Value;
             r.TextHotkey = hkText.Value;
             r.ShotSaveText = chkShotText.Checked;
+            r.FreezeScreen = chkFreeze.Checked;
             r.TextToClipboard = chkTextClip.Checked;
             r.TextSaveFiles = chkTextFiles.Checked;
             r.RecordSystemAudio = chkSys.Checked;

@@ -22,6 +22,9 @@ namespace GrimsGhost
             return bmp;
         }
 
+        /// <summary>An exact copy of part of a still (r is in the still's own pixels).</summary>
+        public static Bitmap Crop(Bitmap still, Rectangle r) => still.Clone(Rectangle.Intersect(r, new Rectangle(Point.Empty, still.Size)), still.PixelFormat);
+
         public static void TrimMemory()
         {
             GC.Collect();

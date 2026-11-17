@@ -56,6 +56,7 @@ namespace GrimsGhost
         public bool TextToClipboard = true;    // capture-text hotkey: copy the words
         public bool TextSaveFiles = false;     // capture-text hotkey: also keep the image + a .txt beside it
         public bool ShotSaveText = false;      // every screenshot: save a .txt of its text beside it (searchable)
+        public bool FreezeScreen = true;       // screenshots / text: select on a still of the moment the hotkey was pressed
         public bool PlaySounds = true;
         public int SoundVolume = 50;
         public bool DesktopShortcutCreated = false;
@@ -178,6 +179,7 @@ namespace GrimsGhost
                 s.TextToClipboard = B(d, "TextToClipboard", s.TextToClipboard);
                 s.TextSaveFiles = B(d, "TextSaveFiles", s.TextSaveFiles);
                 s.ShotSaveText = B(d, "ShotSaveText", s.ShotSaveText);
+                s.FreezeScreen = B(d, "FreezeScreen", s.FreezeScreen);
                 s.PlaySounds = B(d, "PlaySounds", s.PlaySounds);
                 s.SoundVolume = Math.Max(0, Math.Min(100, I(d, "SoundVolume", s.SoundVolume)));
                 // 1.3.0 saved the old 60% default; move untouched values to the new 50% default once.
@@ -251,6 +253,7 @@ namespace GrimsGhost
                     "TextToClipboard=" + TextToClipboard,
                     "TextSaveFiles=" + TextSaveFiles,
                     "ShotSaveText=" + ShotSaveText,
+                    "FreezeScreen=" + FreezeScreen,
                     "PlaySounds=" + PlaySounds,
                     "SoundVolume=" + SoundVolume,
                     "SoundDefaults2=True",

@@ -33,7 +33,7 @@ GrimsGhostSetup.exe --quiet [--screenshots-only] [--no-desktop] [--startup] [--n
 
 Left- or right-click the tray icon for the menu: Capture image, Capture text, Record video, Instant replay (on/off), Output folders, Settings, Close. The tray dot turns **green** while instant replay is running and **red** while recording.
 
-Selecting an area happens live: the screen keeps playing underneath and your app keeps focus.
+For screenshots and capture text, the screen **freezes** the instant you press the hotkey, so pop-up menus, dropdowns and tooltips that would close on your first click are still there to select. Recording selects on the live screen. Either way, the app you're in keeps focus.
 
 - **Drag** to select. The red box shows the area, and the crosshair stays visible pointing out from the corner you're dragging.
 - **Click** a window to grab exactly that window.
@@ -41,6 +41,7 @@ Selecting an area happens live: the screen keeps playing underneath and your app
 - **Enter / Space** reuses the last area.
 - **Arrow keys** nudge 1 px (with Shift, 10 px).
 - **Alt** (held) turns edge snapping off.
+- **Z** switches between the frozen and live screen for that capture. To select on the live screen by default, untick *Freeze the screen while I select* in Settings → Capture.
 - **Esc**, right-click or the same hotkey again cancels.
 
 ## Browser editor

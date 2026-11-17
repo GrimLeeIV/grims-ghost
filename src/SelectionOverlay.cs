@@ -167,7 +167,22 @@ namespace GrimsGhost
     }
 
     /// <summary>
-    /// Live area selector. The screen keeps animating underneath; outside the selection is greyed by a
+    /// The frozen screen: a still of the whole desktop shown under the selector, so pop-up menus and tooltips that
+    /// close on the first click are still there to select. Hidden from capture like the other pieces.
+    /// </summary>
+    sealed class Backdrop : OverlayPiece
+    {
+        public Bitmap Image;
+        protected override void OnPaint(PaintEventArgs e)
+        {
+            if (Image == null) { e.Graphics.Clear(Color.Black); return; }
+            e.Graphics.CompositingMode = CompositingMode.SourceCopy;
+            e.Graphics.DrawImageUnscaled(Image, 0, 0);
+        }
+    }
+
+    /// <summary>
+    /// Live area selector. The screen keeps animating underneath (or shows a frozen still, see Backdrop); outside the selection is greyed by a
     /// translucent layer with a hole cut for the selection. Never takes focus: the app you were in stays active,
     /// keys are read with a temporary low-level keyboard hook.
     /// </summary>
@@ -182,7 +197,13 @@ namespace GrimsGhost
         readonly int W, H;
         readonly Rectangle prev;
         readonly List<Rectangle> windows, monitors;
-        readonly string hintText;
+        string hintText;
+        readonly bool canFreeze;
+        readonly Backdrop backdrop = new Backdrop();
+        Bitmap frozen;   // the whole virtual screen while frozen, else null
+
+        /// <summary>The still the selection was made on (caller owns it afterwards), or null if it was live.</summary>
+        public Bitmap TakeFrozen() { var f = frozen; frozen = null; backdrop.Image = null; return f; }
 
         readonly Arm up = new Arm(), down = new Arm(), left = new Arm(), right = new Arm();
         readonly Ring selRing = new Ring { Color = IconFactory.RecRed, Thickness = 2 };
@@ -202,8 +223,13 @@ namespace GrimsGhost
         public Rectangle? Result { get; private set; }
 
         /// <param name="mode">Shown in the hint card: "SCREENSHOT", "RECORD" or "TEXT".</param>
-        public SelectionOverlay(Rectangle virtualScreen, Rectangle prevAbs, string mode, List<Rectangle> windowsAbs) : base(clickThrough: false)
+        /// <param name="still">A grab of the whole virtual screen to select on (frozen), or null to start live.</param>
+        /// <param name="canFreeze">Whether Z may switch between frozen and live (not for recording).</param>
+        public SelectionOverlay(Rectangle virtualScreen, Rectangle prevAbs, string mode, List<Rectangle> windowsAbs,
+                                Bitmap still = null, bool canFreeze = false) : base(clickThrough: false)
         {
+            frozen = still;
+            this.canFreeze = canFreeze;
             vs = virtualScreen; W = vs.Width; H = vs.Height;
             BackColor = Color.FromArgb(38, 5, 9);   // dim with a subtle red tint, to match the theme and guide the eye
             Opacity = 0;   // stays invisible until it has painted (see Run), otherwise it flashes grey for a few frames
@@ -217,7 +243,42 @@ namespace GrimsGhost
             windows = windowsAbs.Select(ToClient).Where(r => r.Width > 0).ToList();
             monitors = Screen.AllScreens.Select(s => ToClient(s.Bounds)).ToList();
 
-            hintText = "F display  ·  A all" + (prev.IsEmpty ? "" : "  ·  Enter last area") + "  ·  Alt no snap  ·  Esc cancel";
+            SetHint();
+        }
+
+        void SetHint() =>
+            hintText = "F display  ·  A all" + (prev.IsEmpty ? "" : "  ·  Enter last area") + "  ·  Alt no snap"
+                     + (canFreeze ? (frozen != null ? "  ·  Z live" : "  ·  Z freeze") : "") + "  ·  Esc cancel";
+
+        /// <summary>Puts the still under the dim layer (just below it, above everything else).</summary>
+        void ShowBackdrop()
+        {
+            backdrop.Image = frozen;
+            backdrop.Invalidate();
+            backdrop.Place(vs);
+            backdrop.Update();
+            if (IsHandleCreated && Visible)
+                Native.SetWindowPos(backdrop.Handle, Handle, 0, 0, 0, 0, Native.SWP_NOMOVE | Native.SWP_NOSIZE | Native.SWP_NOACTIVATE);
+        }
+
+        /// <summary>Z: freeze what's on screen right now, or go back to the live screen.</summary>
+        void ToggleFreeze()
+        {
+            if (!canFreeze) return;
+            if (frozen == null)
+            {
+                frozen = ScreenGrab.Grab(vs);   // the selector's own windows are hidden from capture, so this is the clean screen
+                ShowBackdrop();
+            }
+            else
+            {
+                backdrop.Place(Rectangle.Empty);
+                backdrop.Image = null;
+                frozen.Dispose();
+                frozen = null;
+            }
+            SetHint();
+            UpdateAll();
         }
 
         static Cursor blank;
@@ -238,6 +299,7 @@ namespace GrimsGhost
         /// <summary>Shows the overlay and pumps messages until the user picks an area or cancels.</summary>
         public Rectangle? Run()
         {
+            if (frozen != null) ShowBackdrop();   // the still goes up first, the dim layer then lands on top of it
             Show();
             Native.SetWindowPos(Handle, Native.HWND_TOPMOST, vs.X, vs.Y, W, H, Native.SWP_NOACTIVATE | Native.SWP_SHOWWINDOW);
             Update();         // paint the red dim while still fully transparent...
@@ -272,6 +334,7 @@ namespace GrimsGhost
         public void HideAll()
         {
             foreach (var p in Pieces) p.Place(Rectangle.Empty);
+            backdrop.Place(Rectangle.Empty);
             Native.SetWindowPos(Handle, IntPtr.Zero, 0, 0, 0, 0, Native.SWP_HIDEWINDOW | Native.SWP_NOACTIVATE | Native.SWP_NOMOVE | Native.SWP_NOSIZE | 0x4);
             Native.DwmFlush();
             Native.DwmFlush();
@@ -313,6 +376,7 @@ namespace GrimsGhost
                 case Keys.Enter: case Keys.Space: if (!prev.IsEmpty) Finish(prev); return true;
                 case Keys.F: { var m = MonitorAt(cur); if (!m.IsEmpty) Finish(m); return true; }
                 case Keys.A: Finish(new Rectangle(0, 0, W, H)); return true;
+                case Keys.Z: if (!canFreeze) return false; ToggleFreeze(); return true;
                 case Keys.Left: Nudge(-step, 0); return true;
                 case Keys.Right: Nudge(step, 0); return true;
                 case Keys.Up: Nudge(0, -step); return true;
@@ -464,7 +528,13 @@ namespace GrimsGhost
         protected override void Dispose(bool disposing)
         {
             if (hook != IntPtr.Zero) { Native.UnhookWindowsHookEx(hook); hook = IntPtr.Zero; }
-            if (disposing) foreach (var p in Pieces) p.Dispose();
+            if (disposing)
+            {
+                foreach (var p in Pieces) p.Dispose();
+                backdrop.Dispose();
+                frozen?.Dispose();   // unless the caller took it
+                frozen = null;
+            }
             base.Dispose(disposing);
         }
     }

@@ -139,7 +139,7 @@ namespace GrimsGhost
                 if (s.ScreenshotMode == ShotMode.FullScreen) { FullScreenShot(now); return; }
 
                 Bitmap img = null;
-                var rect = SelectRegion("SCREENSHOT", r => img = ScreenGrab.Grab(r));
+                var rect = SelectRegion("SCREENSHOT", (r, still) => img = Pixels(r, still), freezable: true);
                 if (rect == null || img == null) { ScreenGrab.TrimMemory(); return; }
                 SoundFx.Play(SoundFx.Kind.Shutter);
                 s.LastRegion = rect.Value;
@@ -179,7 +179,7 @@ namespace GrimsGhost
             if (selecting) return;
             Bitmap img = null;
             Rectangle? rect;
-            try { rect = SelectRegion("TEXT", r => img = ScreenGrab.Grab(r)); }
+            try { rect = SelectRegion("TEXT", (r, still) => img = Pixels(r, still), freezable: true); }
             catch (Exception ex) { Fail("Text capture failed", ex); return; }
             if (rect == null || img == null) { ScreenGrab.TrimMemory(); return; }
             SoundFx.Play(SoundFx.Kind.Shutter);
@@ -258,25 +258,40 @@ namespace GrimsGhost
         }
 
         /// <summary>
-        /// Live selection. Focus never leaves the app the user is in. <paramref name="whileHidden"/> runs right
-        /// after the overlay has left the screen (used to grab the pixels).
+        /// Area selection. Focus never leaves the app the user is in. <paramref name="whileHidden"/> runs right
+        /// after the overlay has left the screen, with the still it was made on if the screen was frozen.
+        /// With <paramref name="freezable"/> and "Freeze the screen" on, the whole desktop is grabbed first thing,
+        /// before any click can close a pop-up menu or tooltip, and the selection is made on that still.
         /// </summary>
-        Rectangle? SelectRegion(string mode, Action<Rectangle> whileHidden = null)
+        Rectangle? SelectRegion(string mode, Action<Rectangle, Bitmap> whileHidden = null, bool freezable = false)
         {
             selecting = true;
+            var vs = SystemInformation.VirtualScreen;
+            Bitmap still = null;
             try
             {
-                using (var ov = new SelectionOverlay(SystemInformation.VirtualScreen, s.LastRegion, mode, WindowList.Collect()))
+                if (freezable && s.FreezeScreen) still = ScreenGrab.Grab(vs);
+                using (var ov = new SelectionOverlay(vs, s.LastRegion, mode, WindowList.Collect(), still, canFreeze: freezable))
                 {
+                    still = null;   // the overlay owns it now
                     activeOverlay = ov;
                     var result = ov.Run();
                     activeOverlay = null;
                     ov.HideAll();
-                    if (result != null) whileHidden?.Invoke(result.Value);
+                    using (var used = ov.TakeFrozen())
+                        if (result != null) whileHidden?.Invoke(result.Value, used);
                     return result;
                 }
             }
-            finally { activeOverlay = null; selecting = false; }
+            finally { still?.Dispose(); activeOverlay = null; selecting = false; }
+        }
+
+        /// <summary>The pixels of an area: cut from the still if the screen was frozen, otherwise grabbed live now.</summary>
+        static Bitmap Pixels(Rectangle r, Bitmap still)
+        {
+            if (still == null) return ScreenGrab.Grab(r);
+            var vs = SystemInformation.VirtualScreen;
+            return ScreenGrab.Crop(still, new Rectangle(r.X - vs.X, r.Y - vs.Y, r.Width, r.Height));
         }
 
         // ------------------------------------------------------------------ video
