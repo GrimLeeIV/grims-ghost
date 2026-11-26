@@ -145,6 +145,33 @@ namespace GrimsGhost
             public UIntPtr ProcessMemoryLimit, JobMemoryLimit, PeakProcessMemoryUsed, PeakJobMemoryUsed;
         }
 
+        [DllImport("gdi32.dll")] static extern int D3DKMTSetProcessSchedulingPriorityClass(IntPtr hProcess, int priorityClass);
+
+        /// <summary>
+        /// Capture keeps up when a game or editor is maxing the PC: ffmpeg's CPU priority goes above normal.
+        /// Call <see cref="PrioritiseGpu"/> too, once it's running.
+        /// </summary>
+        public static void Prioritise(System.Diagnostics.Process p)
+        {
+            try { p.PriorityClass = System.Diagnostics.ProcessPriorityClass.AboveNormal; } catch { }
+        }
+
+        /// <summary>
+        /// Asks Windows to schedule the process's GPU work (screen capture + encoding) ahead of normal apps, as OBS
+        /// does, so a maxed-out GPU doesn't starve it. Only works once the process has opened the GPU (before that
+        /// Windows says "invalid parameter"), so call it when frames are flowing. ABOVE_NORMAL (3): enough to get
+        /// ahead of a game or editor without slowing it much. Best effort.
+        /// </summary>
+        public static void PrioritiseGpu(System.Diagnostics.Process p)
+        {
+            try
+            {
+                int status = D3DKMTSetProcessSchedulingPriorityClass(p.Handle, 3 /*D3DKMT_SCHEDULINGPRIORITYCLASS_ABOVE_NORMAL*/);
+                if (status != 0) Log.Write($"gpu priority not raised (0x{status:x8})");
+            }
+            catch (Exception ex) { Log.Write("gpu priority: " + ex.Message); }
+        }
+
         static IntPtr job;
         public static void KillWithUs(System.Diagnostics.Process p)
         {

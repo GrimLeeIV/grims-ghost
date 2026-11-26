@@ -153,14 +153,14 @@ namespace GrimsGhost
                 return false;
             }
             Native.KillWithUs(p);
-            try { p.PriorityClass = ProcessPriorityClass.AboveNormal; } catch { }
+            Native.Prioritise(p);
             p.BeginErrorReadLine();
             p.BeginOutputReadLine();
 
             var sw = Stopwatch.StartNew();
             while (sw.ElapsedMilliseconds < 10000)
             {
-                if (ready.Wait(50)) { if (p.HasExited) break; proc = p; return true; }
+                if (ready.Wait(50)) { if (p.HasExited) break; Native.PrioritiseGpu(p); proc = p; return true; }
                 if (p.HasExited) break;
             }
             if (!p.HasExited) { proc = p; return true; } // slow start but alive

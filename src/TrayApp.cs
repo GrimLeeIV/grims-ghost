@@ -24,7 +24,8 @@ namespace GrimsGhost
         readonly Icon iconIdle, iconRec, iconReplay;
         ReplayBuffer replay;
         bool replaySaving;
-        bool replayStuck, replayWarned;   // instant replay is on but no new video is arriving
+        bool replayStuck;                 // instant replay is on but no new video is arriving
+        DateTime replayStuckSinceUtc, replayWarnedUtc = DateTime.MinValue;
         readonly Timer replayHealth = new Timer { Interval = 5000 };
         Settings s;
 
@@ -461,32 +462,30 @@ namespace GrimsGhost
         void ApplySoundSettings() { SoundFx.Enabled = s.PlaySounds; SoundFx.Volume = s.SoundVolume; }
 
         /// <summary>
-        /// Instant replay can lose the screen (some games block capture, driver resets…) and restarts by itself.
-        /// While no new video is arriving, say so in the tray, and once per outage with a notification,
-        /// so a save never silently gives you old footage.
+        /// Instant replay can lose the screen (some games block capture, a maxed-out GPU, driver resets…) and
+        /// recovers by itself. The tray tooltip says "paused" while no new video is arriving. A notification only
+        /// comes for a real outage (still paused after a minute), at most once an hour, so short hiccups under
+        /// heavy load don't nag. Saves themselves never hand out old footage either way.
         /// </summary>
         void CheckReplayHealth()
         {
             var r = replay;
-            bool stuck = r != null && !replaySaving && DateTime.UtcNow - r.StartedUtc > TimeSpan.FromSeconds(20) && !r.IsRecording;
-            if (stuck == replayStuck) return;
-            replayStuck = stuck;
-            if (stuck)
+            var now = DateTime.UtcNow;
+            bool stuck = r != null && !replaySaving && now - r.StartedUtc > TimeSpan.FromSeconds(20) && !r.IsRecording;
+            if (stuck != replayStuck)
             {
-                Log.Write("replay health: no new video, " + (r.Problem ?? "restarting"));
-                if (!replayWarned && rec == RecState.Idle)
-                {
-                    replayWarned = true;   // once per outage
-                    Balloon("Instant replay paused", "It isn't getting new video right now, and keeps retrying by itself. "
-                            + "Some games block screen capture while they run.", ToolTipIcon.Warning);
-                }
+                replayStuck = stuck;
+                if (stuck) { replayStuckSinceUtc = now; Log.Write("replay health: no new video, " + (r.Problem ?? "waiting / restarting")); }
+                else if (r != null) Log.Write($"replay health: recording again after {(int)(now - replayStuckSinceUtc).TotalSeconds} s");
+                if (!replaySaving) UpdateTray();
             }
-            else
+            if (stuck && rec == RecState.Idle && now - replayStuckSinceUtc > TimeSpan.FromMinutes(1)
+                && now - replayWarnedUtc > TimeSpan.FromHours(1))
             {
-                if (r != null) Log.Write("replay health: recording again");
-                replayWarned = false;
+                replayWarnedUtc = now;
+                Balloon("Instant replay paused", "It hasn't had new video for a minute and keeps retrying by itself. "
+                        + "Some games block screen capture while they run.", ToolTipIcon.Warning);
             }
-            if (!replaySaving) UpdateTray();
         }
 
         void SaveReplay()

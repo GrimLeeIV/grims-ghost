@@ -107,7 +107,9 @@ namespace GrimsGhost
                         Log.Write($"replay: recording again via {Method}");
                         failures = 0; Problem = null;
                     }
-                    if (newest.HasValue && DateTime.UtcNow - newest.Value > TimeSpan.FromSeconds(SegSeconds * 6))
+                    // Patient: under heavy GPU load ffmpeg can fall behind for a while and catch up by itself, and a
+                    // restart can't make the GPU less busy. Only a long silence means it's really hung.
+                    if (newest.HasValue && DateTime.UtcNow - newest.Value > StallLimit)
                     {
                         Log.Write("replay: ffmpeg stalled (no new video for " + (int)(DateTime.UtcNow - newest.Value).TotalSeconds + " s), restarting");
                         try { p.Kill(); } catch { }
@@ -140,6 +142,7 @@ namespace GrimsGhost
             get { var n = LatestSegmentWriteUtc(); return n.HasValue && DateTime.UtcNow - n.Value < Fresh; }
         }
         static readonly TimeSpan Fresh = TimeSpan.FromSeconds(SegSeconds * 5);
+        static readonly TimeSpan StallLimit = TimeSpan.FromSeconds(30);
 
         DateTime? LatestSegmentWriteUtc()
         {
@@ -209,11 +212,12 @@ namespace GrimsGhost
             p.OutputDataReceived += (s, e) => { };
             try { p.Start(); } catch (Exception ex) { lock (log) log.Add(ex.Message); return false; }
             Native.KillWithUs(p);
+            Native.Prioritise(p);
             p.BeginErrorReadLine(); p.BeginOutputReadLine();
             var sw = Stopwatch.StartNew();
             while (sw.ElapsedMilliseconds < 10000)
             {
-                if (ready.Wait(50)) { if (p.HasExited) break; proc = p; return true; }
+                if (ready.Wait(50)) { if (p.HasExited) break; Native.PrioritiseGpu(p); proc = p; return true; }
                 if (p.HasExited) break;
             }
             if (!p.HasExited) { proc = p; return true; }
