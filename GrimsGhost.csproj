@@ -14,7 +14,7 @@
     <GenerateDocumentationFile>false</GenerateDocumentationFile>
     <Product>Grim's Ghost</Product>
     <AssemblyTitle>Grim's Ghost</AssemblyTitle>
-    <Version>1.69.2</Version>
+    <Version>1.69.3</Version>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
   </PropertyGroup>
