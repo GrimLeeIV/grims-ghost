@@ -9,6 +9,17 @@ namespace GrimsGhost
     {
         public static readonly string[] Vendors = { "nvenc", "amf", "qsv", "sw" };
 
+        /// <summary>The frame count in an ffmpeg progress line ("frame=  123 fps=…"), or -1 if it isn't one.</summary>
+        public static int FramesIn(string line)
+        {
+            if (line == null || !line.StartsWith("frame=")) return -1;
+            int i = 6, n = 0;
+            while (i < line.Length && line[i] == ' ') i++;
+            int start = i;
+            while (i < line.Length && char.IsDigit(line[i])) n = n * 10 + (line[i++] - '0');
+            return i > start ? n : -1;
+        }
+
         public static string Name(VideoCodec c, string vendor)
         {
             if (vendor == "sw") return c == VideoCodec.H264 ? "libx264" : c == VideoCodec.HEVC ? "libx265" : null; // no realtime software AV1

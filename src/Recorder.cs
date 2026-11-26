@@ -140,7 +140,7 @@ namespace GrimsGhost
             {
                 if (e.Data == null) return;
                 lock (log) { log.Add(e.Data); if (log.Count > 60) log.RemoveAt(0); }
-                if (e.Data.Contains("Press [q]") || e.Data.StartsWith("frame=")) ready.Set();
+                if (Encoders.FramesIn(e.Data) > 0) ready.Set();   // real frames only (see ReplayBuffer.TryLaunch)
             };
             p.OutputDataReceived += (s, e) => { };
             try
@@ -160,7 +160,7 @@ namespace GrimsGhost
             var sw = Stopwatch.StartNew();
             while (sw.ElapsedMilliseconds < 10000)
             {
-                if (ready.Wait(50)) { proc = p; return true; }
+                if (ready.Wait(50)) { if (p.HasExited) break; proc = p; return true; }
                 if (p.HasExited) break;
             }
             if (!p.HasExited) { proc = p; return true; } // slow start but alive

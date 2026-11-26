@@ -32,6 +32,11 @@ namespace GrimsGhost
 
         static string goodVendor;
 
+        // Dev self-tests only (Program --test-replay): start believing a given encoder works, or stop restarts.
+        internal static string PreferVendorForTesting { set { goodVendor = value; } }
+        internal static volatile bool BlockLaunchForTesting;
+        internal void KillForTesting() { try { proc?.Kill(); } catch { } }
+
         readonly Options o;
         readonly string dir;
         readonly object saveLock = new object();
@@ -90,13 +95,18 @@ namespace GrimsGhost
                     Thread.Sleep(Math.Min(30000, 3000 * failures));
                     continue;
                 }
-                failures = 0; Problem = null;
                 var p = proc;
+                var launchedAt = DateTime.UtcNow;
                 Log.Write($"replay ffmpeg pid {p.Id}");
                 // Watch it: if it exits, or stops writing segments (hung), restart it.
                 while (running && !p.WaitForExit(5000))
                 {
                     var newest = LatestSegmentWriteUtc();
+                    if (failures > 0 && DateTime.UtcNow - launchedAt > TimeSpan.FromSeconds(20) && IsRecording)
+                    {
+                        Log.Write($"replay: recording again via {Method}");
+                        failures = 0; Problem = null;
+                    }
                     if (newest.HasValue && DateTime.UtcNow - newest.Value > TimeSpan.FromSeconds(SegSeconds * 6))
                     {
                         Log.Write("replay: ffmpeg stalled (no new video for " + (int)(DateTime.UtcNow - newest.Value).TotalSeconds + " s), restarting");
@@ -108,9 +118,28 @@ namespace GrimsGhost
                 if (!running) break;
                 // Desktop duplication is lost on UAC prompts, lock screen, resolution changes: just restart.
                 Log.Write($"replay: ffmpeg exited (code {(p.HasExited ? p.ExitCode.ToString() : "?")}), restarting. " + Tail());
+                if (DateTime.UtcNow - launchedAt < TimeSpan.FromSeconds(20))
+                {
+                    // Died soon after starting: don't keep trusting the encoder that just failed.
+                    // Start the next round from the best one again (NVIDIA first on an NVIDIA PC, etc.).
+                    goodVendor = null;
+                    Problem = "Instant replay keeps stopping: " + Tail();
+                    Thread.Sleep(Math.Min(30000, 3000 * ++failures));
+                    continue;
+                }
                 Thread.Sleep(1500);
             }
         }
+
+        /// <summary>When the buffer was turned on.</summary>
+        public DateTime StartedUtc => sessionStartUtc;
+
+        /// <summary>True while new video is arriving (a segment finished in the last few seconds).</summary>
+        public bool IsRecording
+        {
+            get { var n = LatestSegmentWriteUtc(); return n.HasValue && DateTime.UtcNow - n.Value < Fresh; }
+        }
+        static readonly TimeSpan Fresh = TimeSpan.FromSeconds(SegSeconds * 5);
 
         DateTime? LatestSegmentWriteUtc()
         {
@@ -132,6 +161,7 @@ namespace GrimsGhost
 
         bool Launch()
         {
+            if (BlockLaunchForTesting) { lock (log) { log.Clear(); log.Add("(launches blocked for a test)"); } return false; }
             var r = DisplayBounds();
             var output = Dxgi.Outputs().FirstOrDefault(x => x.Bounds.Contains(r));
             bool haveDda = output.Bounds.Width > 0;
@@ -172,7 +202,9 @@ namespace GrimsGhost
             {
                 if (e.Data == null) return;
                 if (!e.Data.StartsWith("frame=")) lock (log) { log.Add(e.Data); if (log.Count > 40) log.RemoveAt(0); }
-                if (e.Data.Contains("Press [q]") || e.Data.StartsWith("frame=")) ready.Set();
+                // Only real frames count as "running": ffmpeg prints "Press [q]" before it opens the encoder, and a
+                // final "frame=    0" line as it gives up, so neither proves the encoder works.
+                if (Encoders.FramesIn(e.Data) > 0) ready.Set();
             };
             p.OutputDataReceived += (s, e) => { };
             try { p.Start(); } catch (Exception ex) { lock (log) log.Add(ex.Message); return false; }
@@ -181,7 +213,7 @@ namespace GrimsGhost
             var sw = Stopwatch.StartNew();
             while (sw.ElapsedMilliseconds < 10000)
             {
-                if (ready.Wait(50)) { proc = p; return true; }
+                if (ready.Wait(50)) { if (p.HasExited) break; proc = p; return true; }
                 if (p.HasExited) break;
             }
             if (!p.HasExited) { proc = p; return true; }
@@ -191,15 +223,28 @@ namespace GrimsGhost
 
         string Tail() { lock (log) return string.Join(" ", log.Skip(Math.Max(0, log.Count - 3))); }
 
+        static string Ago(TimeSpan t) =>
+            t.TotalMinutes < 1 ? (int)t.TotalSeconds + " seconds" :
+            t.TotalHours < 1 ? (int)t.TotalMinutes + " minute" + ((int)t.TotalMinutes == 1 ? "" : "s") :
+            (int)t.TotalHours + " hour" + ((int)t.TotalHours == 1 ? "" : "s");
+
         /// <summary>Writes the last N seconds to <paramref name="outPath"/>. Returns a note if something was missing.</summary>
         public string Save(string outPath)
         {
             lock (saveLock)
             {
-                var segs = new DirectoryInfo(dir).GetFiles("seg*.mkv")
-                    .Where(f => f.LastWriteTimeUtc >= sessionStartUtc && f.Length > 1024)
-                    .OrderBy(f => f.LastWriteTimeUtc).ToList();
-                if (segs.Count == 0) throw new InvalidOperationException("Instant replay hasn't captured anything yet.");
+                var all = new DirectoryInfo(dir).GetFiles("seg*.mkv")
+                    .Where(f => f.LastWriteTimeUtc >= sessionStartUtc && f.Length > 1024).ToList();
+                if (all.Count == 0) throw new InvalidOperationException("Instant replay hasn't captured anything yet.");
+                // Never save old footage as if it were new: if recording has stopped (and is restarting), say so.
+                var newest = all.Max(f => f.LastWriteTimeUtc);
+                if (DateTime.UtcNow - newest > Fresh)
+                    throw new InvalidOperationException("Instant replay hasn't been recording for the last "
+                        + Ago(DateTime.UtcNow - newest) + ", so there's nothing new to save. "
+                        + (Problem ?? "It's restarting by itself; try again in a few seconds."));
+                // Only the last N seconds of footage, so a restart can't stitch in video from before a gap.
+                var from = newest - TimeSpan.FromSeconds(o.Seconds + SegSeconds * 3);
+                var segs = all.Where(f => f.LastWriteTimeUtc >= from).OrderBy(f => f.LastWriteTimeUtc).ToList();
                 int need = (int)Math.Ceiling(o.Seconds / (double)SegSeconds) + 1;
                 segs = segs.Skip(Math.Max(0, segs.Count - need)).ToList();
                 var timer = Stopwatch.StartNew();

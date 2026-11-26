@@ -88,10 +88,13 @@ namespace GrimsGhost
                         return result != null ? 0 : 1;
                     }
 
-                    case "--test-replay": // --test-replay bufferSeconds runSeconds
+                    case "--test-replay": // --test-replay bufferSeconds runSeconds [split] [prefer=amf] [stall]
                     {
                         var s = Settings.Load();
                         var ff = Ffmpeg.Find(s.FfmpegPath) ?? throw new Exception("ffmpeg not found");
+                        var prefer = args.FirstOrDefault(a => a.StartsWith("prefer="));
+                        if (prefer != null) ReplayBuffer.PreferVendorForTesting = prefer.Substring(7);
+                        bool stall = args.Contains("stall");
                         using (var rb = new ReplayBuffer(new ReplayBuffer.Options
                         {
                             Ffmpeg = ff, Quality = s.Video, Seconds = int.Parse(args[1]),
@@ -100,6 +103,15 @@ namespace GrimsGhost
                         {
                             rb.Start();
                             Thread.Sleep(int.Parse(args[2]) * 1000);
+                            Log.Write($"test-replay: after {args[2]} s method={rb.Method} recording={rb.IsRecording} problem={rb.Problem}");
+                            if (stall)   // recording stops and can't restart: a save must refuse, not reuse old footage
+                            {
+                                ReplayBuffer.BlockLaunchForTesting = true;
+                                rb.KillForTesting();
+                                Thread.Sleep(14000);
+                                try { rb.Save(Output.VideoPath(s, DateTime.Now).Replace("Recording ", "Replay ")); Log.Write("test-replay stall: SAVED (wrong)"); return 1; }
+                                catch (Exception ex) { Log.Write("test-replay stall: refused as expected: " + ex.Message); return 0; }
+                            }
                             var path = Output.VideoPath(s, DateTime.Now).Replace("Recording ", "Replay ");
                             var note = rb.Save(path);
                             Log.Write($"test-replay: method={rb.Method} saved={path} note={note} problem={rb.Problem}");
